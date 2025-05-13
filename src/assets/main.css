@@ -1,0 +1,38 @@
+@import './base.css';
+
+/* Color system */
+:root {
+  --app-active-color: #E5E6FF;
+}
+
+/* Font size system */
+:root {
+  --app-font-size-base: 0.875rem;      /* 14px - Base text size */
+  --app-font-size-sm: 0.75rem;         /* 12px - Small text */
+  --app-font-size-lg: 1rem;            /* 16px - Large text */
+  --app-font-size-xl: 1.25rem;         /* 20px - Extra large text */
+  --app-font-size-2xl: 1.5rem;         /* 24px - Heading text */
+}
+
+/* Typography utility classes */
+.app-text {
+  font-size: var(--app-font-size-base) !important;
+}
+
+.app-text-sm {
+  font-size: var(--app-font-size-sm) !important;
+}
+
+.app-text-lg {
+  font-size: var(--app-font-size-lg) !important;
+}
+
+.app-text-xl {
+  font-size: var(--app-font-size-xl) !important;
+}
+
+.app-text-2xl {
+  font-size: var(--app-font-size-2xl) !important;
+}
+
+
