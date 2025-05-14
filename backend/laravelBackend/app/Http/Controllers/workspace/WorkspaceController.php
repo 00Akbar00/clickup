@@ -10,6 +10,8 @@ use Carbon\Carbon;
 use Laravolt\Avatar\Facade as Avatar;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class WorkspaceController extends Controller
 {
@@ -24,34 +26,41 @@ class WorkspaceController extends Controller
         try {
             DB::beginTransaction();
 
-            // Generate workspace avatar
+            // Generate random hex color
+            $randomColor = sprintf('#%02X%02X%02X', mt_rand(0, 255), mt_rand(0, 255), mt_rand(0, 255));
+
+            // Generate and save avatar
             $avatar = Avatar::create($request->name)
-                ->setBackground('#FFFFFF')
+                ->setBackground($randomColor)
                 ->setDimension(200)
                 ->setFontSize(100);
 
-            $avatarPath = 'workspace-logos/' . Str::uuid() . '.png';
-            $avatar->save(storage_path('app/public/' . $avatarPath));
+            $avatarDirectory = 'workspace-logos';
+            Storage::makeDirectory("public/{$avatarDirectory}");
 
-            $workspaceId = Str::uuid(); // Generate UUID for workspace
+            $avatarFileName = Str::uuid() . '.png';
+            $avatarPath = "{$avatarDirectory}/{$avatarFileName}";
+            $avatar->save(storage_path("app/public/{$avatarPath}"));
 
             // Create workspace
+            $workspaceId = Str::uuid();
             DB::table('workspaces')->insert([
                 'workspace_id' => $workspaceId,
                 'name' => $request->name,
                 'description' => $request->description,
-                'created_by' =>  Auth::user()->user_id,
+                'created_by' => Auth::user()->user_id,
                 'invite_token' => Str::uuid(),
                 'invite_token_expires_at' => Carbon::now()->addDays(7),
-                'logo_url' => asset('storage/' . $avatarPath),
+                'logo_url' => asset("storage/{$avatarPath}"),
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
 
-            // Add creator as owner
+            // Add creator as owner - INCLUDING workspace_member_id
             DB::table('workspace_members')->insert([
+                'workspace_member_id' => Str::uuid(), // Add this line
                 'workspace_id' => $workspaceId,
-                'user_id' =>  Auth::user()->user_id,
+                'user_id' => Auth::user()->user_id,
                 'role' => 'owner',
                 'joined_at' => now()
             ]);
@@ -62,17 +71,18 @@ class WorkspaceController extends Controller
                 'success' => true,
                 'workspace' => DB::table('workspaces')->where('workspace_id', $workspaceId)->first()
             ], 201);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
 
-            // Log the error (optional but good for debugging later)
-            Log::error('Workspace creation failed: ' . $e->getMessage());
+            Log::error('Workspace creation error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
 
-            // Return the error in the response
             return response()->json([
                 'success' => false,
                 'message' => 'Workspace creation failed',
-                'error' => $e->getMessage() // this sends the exception message to Postman
+                'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }
     }
