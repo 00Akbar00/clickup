@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Providers\RouteServiceProvider;
+use App\Http\Controllers\Workspace\WorkspaceController;
 
 Route::middleware(['throttle:signup-limiter'])->group(function () {
     Route::post('/login', [LoginController::class, 'login']);
@@ -25,7 +26,16 @@ Route::middleware('check.token.expiry')->group(function () {
     Route::post("reset-password/{token}",[PasswordResetController::class,'resetPassword']);
 });
 
+Route::middleware('auth:api')->group(function () {
+    Route::prefix('workspaces')->group(function () {
+        Route::post('/', [WorkspaceController::class, 'createWorkspace']);
+        Route::get('/', [WorkspaceController::class, 'getWorkspaces']);
+        Route::post('{workspaceId}/generate-invite', [WorkspaceController::class, 'generateInviteToken']);
+    });
 
+    Route::post('/invite/{token}', [WorkspaceController::class, 'processInvite']);
+    Route::get('/invite/pending', [WorkspaceController::class, 'checkPendingInvites']);
+});
 
 Route::prefix('teams')->middleware(['auth:api'])->group(function () {
     Route::post('/create/{workspace_id}', [TeamController::class, 'createTeam']);
@@ -34,7 +44,7 @@ Route::prefix('teams')->middleware(['auth:api'])->group(function () {
     Route::put('/{team_id}', [TeamController::class, 'updateTeam']);
     Route::delete('/{team_id}', [TeamController::class, 'deleteTeam']);
     Route::get('/{team_id}/members', [TeamController::class, 'getTeamMembers']);
-
+});
 Route::middleware(['auth:api'])->group(function () {
     Route::post('/teams/create', [TeamController::class, 'createTeam']);
     Route::get('/user/profile', [UserController::class, 'getProfile']);
