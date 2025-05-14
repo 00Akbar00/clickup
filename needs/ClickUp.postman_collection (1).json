@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "7b6658f3-48ed-401f-baac-3490970de318",
+		"_postman_id": "dc69779e-ad0b-440b-9b19-a75b52580c8a",
 		"name": "ClickUp",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "44186082",
-		"_collection_link": "https://api-team-4493.postman.co/workspace/API-Team-Workspace~dd72f780-c4b6-4ec7-82ce-72f164f0f164/collection/44186082-7b6658f3-48ed-401f-baac-3490970de318?action=share&source=collection_link&creator=44186082"
+		"_exporter_id": "34859675",
+		"_collection_link": "https://sf8888-4196.postman.co/workspace/sf-Workspace~5b3ea066-f639-41d1-899e-42718e8805a9/collection/34859675-dc69779e-ad0b-440b-9b19-a75b52580c8a?action=share&source=collection_link&creator=34859675"
 	},
 	"item": [
 		{
@@ -724,6 +724,101 @@
 								"api",
 								"lists",
 								"dc760eef-aab0-42f9-8c62-af9e256a5864"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Workspace",
+			"item": [
+				{
+					"name": "createWorkspace",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDcyNDU1MTQsImV4cCI6MTc0NzI1MjcxNCwic3ViIjoiZWJlN2FjN2YtYjI5YS00OTRmLTk5YzQtMzc1OTVkOTlhMDE0IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.NbUMDZYNyJuJp2G-4LvzbAN0M_ZpDULONwlD_822qVM",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"My Team Workspace\",\n  \"description\": \"This is for our main project team\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost/api/workspaces/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getWorkspace",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDcyNDU1MTQsImV4cCI6MTc0NzI1MjcxNCwic3ViIjoiZWJlN2FjN2YtYjI5YS00OTRmLTk5YzQtMzc1OTVkOTlhMDE0IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.NbUMDZYNyJuJp2G-4LvzbAN0M_ZpDULONwlD_822qVM",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost/api/workspaces",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces"
 							]
 						}
 					},
