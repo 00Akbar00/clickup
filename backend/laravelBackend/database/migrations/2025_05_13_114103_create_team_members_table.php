@@ -6,20 +6,33 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('team_members', function (Blueprint $table) {
-            $table->id();
+            $table->id('team_member_id');
+            $table->unsignedBigInteger('team_id');
+            $table->uuid('user_id');
+
+            $table->string('role'); // owner | admin | member | guest
+            $table->timestamp('joined_at')->useCurrent();
             $table->timestamps();
+
+            // Constraints
+            $table->unique(['team_id', 'user_id']);
+
+            // Foreign Keys
+            $table->foreign('team_id')
+                ->references('team_id')
+                ->on('teams')
+                ->onDelete('cascade');
+
+            $table->foreign('user_id')
+                ->references('user_id')
+                ->on('users')
+                ->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('team_members');

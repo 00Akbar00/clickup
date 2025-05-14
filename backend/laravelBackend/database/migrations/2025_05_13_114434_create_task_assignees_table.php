@@ -6,21 +6,27 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
+    public function up()
     {
         Schema::create('task_assignees', function (Blueprint $table) {
-            $table->id();
+            $table->id('task_assignee_id');
+            $table->unsignedBigInteger('task_id');
+            $table->uuid('user_id');
+            $table->uuid('assigned_by');
+            $table->timestamp('assigned_at')->useCurrent();
             $table->timestamps();
+
+
+            $table->foreign('task_id')->references('task_id')->on('tasks')->onDelete('cascade');
+            $table->foreign('user_id')->references('user_id')->on('users')->onDelete('cascade');
+            $table->foreign('assigned_by')->references('user_id')->on('users')->onDelete('cascade');
+
+            // Ensure unique assignment
+            $table->unique(['task_id', 'user_id']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
+    public function down()
     {
         Schema::dropIfExists('task_assignees');
     }

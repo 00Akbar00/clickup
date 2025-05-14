@@ -6,20 +6,34 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('teams', function (Blueprint $table) {
-            $table->id();
+            $table->id('team_id');
+            
+            $table->unsignedBigInteger('workspace_id');
+            $table->uuid('created_by');
+            
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->boolean('is_private')->default(false);
+            $table->string('color_code')->nullable();
+            
             $table->timestamps();
+
+            // Foreign Keys
+            $table->foreign('workspace_id')
+                ->references('workspace_id')
+                ->on('workspaces')
+                ->onDelete('cascade');
+
+            $table->foreign('created_by')
+                ->references('user_id')
+                ->on('users')
+                ->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('teams');

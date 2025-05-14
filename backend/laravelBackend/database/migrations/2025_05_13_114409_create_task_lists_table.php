@@ -6,22 +6,36 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('task_lists', function (Blueprint $table) {
-            $table->id();
+        Schema::create('lists', function (Blueprint $table) {
+            $table->id('list_id');
+
+            $table->unsignedBigInteger('project_id');
+            $table->uuid('created_by');
+            
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->integer('position');
+            $table->string('status')->default('active'); // active | archived
+
             $table->timestamps();
+
+            // Foreign Keys
+            $table->foreign('project_id')
+                  ->references('project_id')
+                  ->on('projects')
+                  ->onDelete('cascade');
+
+            $table->foreign('created_by')
+                  ->references('user_id')
+                  ->on('users')
+                  ->onDelete('cascade');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('task_lists');
+        Schema::dropIfExists('lists');
     }
 };
