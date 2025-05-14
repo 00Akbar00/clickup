@@ -8,16 +8,18 @@ use Illuminate\Database\Eloquent\Model;
 class TaskList extends Model
 {
     use HasFactory;
-
     protected $primaryKey = 'list_id';
+
+    public $incrementing = false;
+    protected $keyType = 'string';
     protected $table = 'lists';
 
     protected $fillable = [
+        'list_id',
         'project_id',
         'name',
         'description',
         'created_by',
-        'position',
         'status',
     ];
 

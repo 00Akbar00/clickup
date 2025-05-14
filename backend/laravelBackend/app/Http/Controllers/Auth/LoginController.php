@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -36,7 +38,7 @@ class LoginController extends Controller
             'message' => 'Login successful',
             'token' => $token,
             'user' => [
-                'fullName' => $user->fullName,
+                'full_name' => $user->full_name,
                 'email' => $user->email,
                 'profile_picture_url' => asset('storage/' . $user->profile_picture_url),
             ]

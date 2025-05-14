@@ -9,14 +9,13 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('lists', function (Blueprint $table) {
-            $table->id('list_id');
+            $table->uuid('list_id')->primary();
 
-            $table->unsignedBigInteger('project_id');
+            $table->uuid('project_id');
             $table->uuid('created_by');
             
             $table->string('name');
             $table->text('description')->nullable();
-            $table->integer('position');
             $table->string('status')->default('active'); // active | archived
 
             $table->timestamps();

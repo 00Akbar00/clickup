@@ -9,8 +9,8 @@ return new class extends Migration
     public function up()
     {
         Schema::create('task_assignees', function (Blueprint $table) {
-            $table->id('task_assignee_id');
-            $table->unsignedBigInteger('task_id');
+            $table->uuid('task_assignee_id')->primary();
+            $table->uuid('task_id');
             $table->uuid('user_id');
             $table->uuid('assigned_by');
             $table->timestamp('assigned_at')->useCurrent();

@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
 
 use App\Models\User;
 use App\Services\PasswordResetService;
@@ -100,5 +102,15 @@ class PasswordResetController extends Controller
 
         return view('email.show-reset-password', ['token' => $token]);
     }
+    // public function showResetPasswordForm($token)
+    // {
+    //     $user = User::where('reset_token', $token)->first();
+
+    //     if (!$user || !$user->reset_token_expires_at || $user->reset_token_expires_at->isPast()) {
+    //         return redirect()->back()->with('error', 'This password reset link is invalid or has expired.');
+    //     }
+
+    //     return view('email.show-reset-password', ['token' => $token]);
+    // }
 
 }

@@ -20,27 +20,28 @@ class TokenService
             'alg' => 'HS256',
             'typ' => 'JWT'
         ];
-
+    
         $issuedAt = Carbon::now()->timestamp;
         $expirationTime = Carbon::now()->addHours(2)->timestamp;
-
+    
         $payload = [
             'iat' => $issuedAt,
             'exp' => $expirationTime,
-            'sub' => $user->id,
-            'name' => $user->name,
+            'sub' => $user->user_id,  
+            'name' => $user->full_name, 
+
             'email' => $user->email,
         ];
-
+    
         $base64UrlHeader = $this->base64UrlEncode(json_encode($header));
         $base64UrlPayload = $this->base64UrlEncode(json_encode($payload));
-
+    
         $signature = hash_hmac('sha256', $base64UrlHeader . "." . $base64UrlPayload, $this->key, true);
         $base64UrlSignature = $this->base64UrlEncode($signature);
-
+    
         return $base64UrlHeader . "." . $base64UrlPayload . "." . $base64UrlSignature;
     }
-
+    
     // Validate a JWT token
     public function validateToken($token)
     {

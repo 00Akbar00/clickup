@@ -9,15 +9,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('projects', function (Blueprint $table) {
-            $table->id('project_id');
+            $table->uuid('project_id')->primary();
 
-            $table->unsignedBigInteger('team_id');
+            $table->uuid('team_id');
             $table->uuid('created_by');
 
             $table->string('name');
             $table->text('description')->nullable();
-            $table->date('start_date')->nullable();
-            $table->date('end_date')->nullable();
+            $table->enum('visibility', ['public', 'private'])->default('private');
             $table->string('status')->default('active');
             $table->string('color_code')->nullable();
             $table->timestamps();

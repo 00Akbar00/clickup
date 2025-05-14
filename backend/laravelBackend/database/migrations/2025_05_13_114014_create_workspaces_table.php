@@ -9,7 +9,7 @@ return new class extends Migration
     public function up()
     {
         Schema::create('workspaces', function (Blueprint $table) {
-            $table->id('workspace_id');
+            $table->uuid('workspace_id')->primary();
             $table->string('name');
             $table->text('description')->nullable();
             $table->uuid('created_by');

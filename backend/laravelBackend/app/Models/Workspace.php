@@ -9,7 +9,12 @@ class Workspace extends Model
 {
     use HasFactory;
 
+    
+
     protected $primaryKey = 'workspace_id';
+
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
         'name',

@@ -9,7 +9,11 @@ class WorkspaceMember extends Model
 {
     use HasFactory;
 
+    
     protected $primaryKey = 'workspace_member_id';
+
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
         'workspace_id',

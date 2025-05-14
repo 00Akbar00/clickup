@@ -10,14 +10,16 @@ class Project extends Model
     use HasFactory;
 
     protected $primaryKey = 'project_id';
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
+        'project_id',
         'team_id',
         'name',
         'description',
         'created_by',
-        'start_date',
-        'end_date',
+        'visibility',
         'status',
         'color_code',
     ];

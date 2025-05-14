@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('team_members', function (Blueprint $table) {
             $table->id('team_member_id');
-            $table->unsignedBigInteger('team_id');
-            $table->uuid('user_id');
+            $table->uuid('team_id');  
+            $table->uuid('user_id');  
 
             $table->string('role'); // owner | admin | member | guest
             $table->timestamp('joined_at')->useCurrent();
@@ -22,12 +22,12 @@ return new class extends Migration
 
             // Foreign Keys
             $table->foreign('team_id')
-                ->references('team_id')
+                ->references('team_id')  
                 ->on('teams')
                 ->onDelete('cascade');
 
             $table->foreign('user_id')
-                ->references('user_id')
+                ->references('user_id')  
                 ->on('users')
                 ->onDelete('cascade');
         });

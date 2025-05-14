@@ -4,21 +4,35 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Team extends Model
 {
     use HasFactory;
 
     protected $primaryKey = 'team_id';
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
         'workspace_id',
         'name',
         'description',
-        'is_private',
+        'visibility',
         'created_by',
         'color_code',
     ];
+
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::creating(function ($model) {
+            if (empty($model->team_id)) {
+                $model->team_id = (string) Str::uuid();
+            }
+        });
+    }
 
     public function workspace()
     {
