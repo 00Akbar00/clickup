@@ -16,9 +16,14 @@
             ref="projectInput"
           >
         </div>
-        <div class="modal-footer py-3">
-          <button type="button" class="btn btn-link text-dark" @click="hide">Cancel</button>
-          <button type="button" class="btn btn-primary px-4" @click="createProject">Create</button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button 
+            type="button" 
+            class="btn btn-primary" 
+            @click="createProject"
+            :disabled="!projectName.trim()"
+          >Create Project</button>
         </div>
       </div>
     </div>
@@ -48,9 +53,8 @@ const hide = () => {
 }
 
 const createProject = () => {
-  const teamspace = window.activeTeamspace
-  if (projectName.value.trim() && teamspace) {
-    const newId = Math.max(0, ...teamspace.projects.map(p => p.id)) + 1
+  if (projectName.value.trim()) {
+    const newId = Math.max(0, ...workspaceStore.teamspaces.flatMap(t => t.projects?.map(p => p.id) || []), 0) + 1
     
     const newProject = {
       id: newId,
@@ -58,8 +62,13 @@ const createProject = () => {
       lists: []
     }
     
-    workspaceStore.addProject(teamspace, newProject)
-    hide()
+    const teamspaceId = window.activeTeamspace?.id
+    if (teamspaceId) {
+      workspaceStore.addProject(teamspaceId, newProject)
+      hide()
+    } else {
+      console.error('No active teamspace found')
+    }
   }
 }
 
@@ -85,24 +94,32 @@ defineExpose({
 }
 
 .modal-title {
-  font-size: 1.25rem;
+  font-size: var(--app-font-size-lg);
 }
 
 .form-control {
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  font-size: var(--app-font-size-base);
+  border-radius: 6px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  box-shadow: none;
 }
 
 .form-control:focus {
-  box-shadow: 0 0 0 0.25rem rgba(13,110,253,.15);
+  border-color: var(--app-primary-color);
+  box-shadow: 0 0 8px rgba(84, 62, 208, 0.25);
 }
 
 .btn {
-  font-size: 1rem;
+  font-size: var(--app-font-size-base);
   padding: 0.5rem 1rem;
 }
 
-.modal-header, .modal-footer {
+.modal-header {
+  border-bottom: none;
+}
+
+.modal-footer {
   border-color: rgba(0,0,0,.1);
 }
 </style> 

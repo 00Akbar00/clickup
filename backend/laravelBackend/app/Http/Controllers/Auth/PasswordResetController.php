@@ -45,7 +45,7 @@ class PasswordResetController extends Controller
         $token = bin2hex(random_bytes(32)); // 64-character secure token
 
         // $expiry = now()->addMinutes(1);
-        $expiry = now()->addMinute()->setSecond(0)->setMicrosecond(0);
+        $expiry = now()->addHour();
         $user->reset_token = $token;
         $user->reset_token_expires_at = $expiry;
         $user->save();

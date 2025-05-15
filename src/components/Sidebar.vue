@@ -1,11 +1,38 @@
 <template>
-  <div class="sidebar bg-white border-end" style="width: 250px; height: calc(100vh - 48px); position: fixed; left: 0; top: 48px;">
+  <div class="sidebar bg-light border-end" :class="{ 'collapsed': isCollapsed }" :style="sidebarStyle">
     <!-- User Profile Section -->
-    <div class="p-2 border-bottom">
-      <div class="d-flex align-items-center">
-        <div class="rounded-circle bg-secondary" style="width: 32px; height: 32px;"></div>
-        <h6 class="mb-0 ms-2 app-text">Haris Hassan</h6>
+    <div class="p-2 border-bottom d-flex justify-content-between align-items-center">
+      <!-- <h1>{{userName}}</h1> -->
+      <div class="d-flex align-items-center overflow-hidden">
+        <!-- <div class="rounded-circle bg-secondary flex-shrink-0" style="width: 32px; height: 32px;"></div> -->
+        <img
+
+v-if="profilePictureUrl"
+
+:src="profilePictureUrl"
+
+alt="Profile"
+
+class="rounded-circle"
+
+style="width: 32px; height: 32px; object-fit: cover;"
+
+/>
+
+<div
+
+v-else
+
+class="rounded-circle bg-secondary"
+
+style="width: 32px; height: 32px;"
+
+></div>
+        <h6 class="mb-0 ms-2 app-text sidebar-text text-truncate">{{ userName }}</h6>
       </div>
+      <button class="btn btn-link text-dark p-0 collapse-btn flex-shrink-0" @click="toggleSidebar">
+        <i class="bi" :class="isCollapsed ? 'bi-chevron-right' : 'bi-chevron-left'"></i>
+      </button>
     </div>
 
     <!-- Navigation Section -->
@@ -14,28 +41,41 @@
         <router-link 
           to="/" 
           class="nav-link d-flex align-items-center text-dark text-decoration-none py-1 px-2 rounded app-text"
-          :class="{ 'active-item': selectedItem.type === 'home' }"
+          :class="{ 'active-item': selectedItem.type === 'home', 'justify-content-center': isCollapsed }"
           @click="handleHomeClick"
         >
-          <i class="bi bi-house-door me-2"></i>
-          <span>Home</span>
+          <i class="bi bi-house-door" :class="isCollapsed ? '' : 'me-2'"></i>
+          <span class="sidebar-text">Home</span>
         </router-link>
       </div>
       <div class="nav-item">
         <router-link 
           to="/inbox" 
           class="nav-link d-flex align-items-center text-dark text-decoration-none py-1 px-2 rounded app-text"
-          :class="{ 'active-item': selectedItem.type === 'inbox' }"
+          :class="{ 'active-item': selectedItem.type === 'inbox', 'justify-content-center': isCollapsed }"
           @click="handleInboxClick"
         >
-          <i class="bi bi-inbox me-2"></i>
-          <span>Inbox</span>
+          <i class="bi bi-inbox" :class="isCollapsed ? '' : 'me-2'"></i>
+          <span class="sidebar-text">Inbox</span>
         </router-link>
       </div>
     </div>
 
     <!-- Workspace Navigation -->
-    <div class="p-2">
+    <div class="workspace-section p-2">
+      <!-- Everything Overview -->
+      <div class="nav-item mb-3">
+        <router-link 
+          to="/everything" 
+          class="nav-link d-flex align-items-center text-dark text-decoration-none py-1 px-2 rounded app-text"
+          :class="{ 'active-item': selectedItem.type === 'everything', 'justify-content-center': isCollapsed }"
+          @click="handleEverythingClick"
+        >
+          <i class="bi bi-grid-3x3-gap" :class="isCollapsed ? '' : 'me-2'"></i>
+          <span class="sidebar-text">Everything</span>
+        </router-link>
+      </div>
+
       <!-- Main Accordion for Teamspaces -->
       <div class="accordion" id="teamspacesAccordion">
         <!-- Teamspaces -->
@@ -43,16 +83,19 @@
           <h2 class="accordion-header">
             <button 
               class="accordion-button collapsed py-2 app-text" 
-              :class="{ 'active-item': selectedItem.type === 'teamspace' && selectedItem.id === teamspace.id }"
+              :class="{ 
+                'active-item': selectedItem.type === 'teamspace' && selectedItem.id === teamspace.id,
+                'justify-content-center': isCollapsed
+              }"
               type="button" 
               @click="handleTeamspaceClick(teamspace)"
             >
               <div class="d-flex justify-content-between align-items-center w-100 me-2">
                 <div class="d-flex align-items-center">
-                  <i class="bi bi-building me-2 text-secondary"></i>
-                  <span>{{ teamspace.name }}</span>
+                  <i class="bi bi-building" :class="isCollapsed ? '' : 'me-2'"></i>
+                  <span class="sidebar-text">{{ teamspace.name }}</span>
                 </div>
-                <button class="btn btn-link text-dark p-0" @click.stop="showNewProjectModal(teamspace, $event)">
+                <button class="btn btn-link text-dark p-0 sidebar-text" @click.stop="showNewProjectModal(teamspace, $event)">
                   <i class="bi bi-plus"></i>
                 </button>
               </div>
@@ -61,8 +104,7 @@
           <div 
             :id="'teamspaceCollapse' + teamspace.id" 
             class="accordion-collapse collapse" 
-            data-bs-parent="#teamspacesAccordion"
-          >
+            data-bs-parent="#teamspacesAccordion">
             <div class="accordion-body p-0">
               <!-- Projects Accordion -->
               <div class="accordion" :id="'projectsAccordion' + teamspace.id">
@@ -77,7 +119,7 @@
                     >
                       <div class="d-flex justify-content-between align-items-center w-100 me-2">
                         <div class="d-flex align-items-center">
-                          <i class="bi bi-folder me-2 text-secondary"></i>
+                          <i class="bi bi-folder me-2"></i>
                           <span>{{ project.name }}</span>
                         </div>
                         <button class="btn btn-link text-dark p-0" @click.stop="showNewListModal(project, $event, teamspace)">
@@ -89,25 +131,23 @@
                   <div 
                     :id="'projectCollapse' + project.id" 
                     class="accordion-collapse collapse" 
-                    :data-bs-parent="'#projectsAccordion' + teamspace.id"
-                  >
+                    :data-bs-parent="'#projectsAccordion' + teamspace.id">
                     <div class="accordion-body p-0">
                       <!-- Lists -->
                       <div v-for="list in project.lists" :key="list.id" class="ms-4 mb-2">
-                        <router-link 
-                          :to="{ name: 'list', params: { id: list.id }}" 
+                        <div 
                           class="d-flex justify-content-between align-items-center text-dark text-decoration-none py-1 app-text px-2"
                           :class="{ 'active-item': selectedItem.type === 'list' && selectedItem.id === list.id }"
-                          @click="handleListClick(list)"
+                          @click="handleListClick(list, project, teamspace)"
                         >
                           <div class="d-flex align-items-center">
-                            <i class="bi bi-list-ul me-2 text-secondary"></i>
+                            <i class="bi bi-list-ul me-2"></i>
                             <span>{{ list.name }}</span>
                           </div>
                           <button class="btn btn-link text-dark p-0 ms-2" @click.stop="showNewTaskModal(list)">
                             <i class="bi bi-plus"></i>
                           </button>
-                        </router-link>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -116,6 +156,30 @@
             </div>
           </div>
         </div>
+        <!-- New Teamspace Button -->
+        <div class="nav-item mb-2">
+          <button 
+            class="nav-link d-flex align-items-center text-dark text-decoration-none py-1 px-2 rounded app-text w-100"
+            :class="{ 'justify-content-center': isCollapsed }"
+            @click="showNewTeamspaceModal"
+          >
+            <i class="bi bi-plus" :class="isCollapsed ? '' : 'me-2'"></i>
+            <span class="sidebar-text">New Teamspace</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invite Members Button -->
+    <div class="invite-section border-top p-2">
+      <div class="nav-item" :style="{ marginLeft: isCollapsed ? '0' : '25%' }">
+        <button 
+          class="nav-link d-flex align-items-center justify-content-center text-dark text-decoration-none py-1 px-4 rounded app-text"
+          @click="showInviteMembersModal"
+        >
+          <i class="bi bi-person-plus" :class="isCollapsed ? '' : 'me-2'"></i>
+          <span class="sidebar-text">Invite</span>
+        </button>
       </div>
     </div>
   </div>
@@ -127,6 +191,7 @@ import { useNavigationStore } from '../stores/navigationStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import { useRouter, useRoute } from 'vue-router'
 import * as bootstrap from 'bootstrap'
+import { useSidebarStore } from '../stores/sidebarStore'
 
 const navigationStore = useNavigationStore()
 const workspaceStore = useWorkspaceStore()
@@ -137,12 +202,44 @@ const selectedItem = ref({
   type: null,
   id: null
 })
+const userName = ref('')
+const profilePictureUrl = ref('')
+const sidebarStore = useSidebarStore()
+
+const isCollapsed = computed(() => sidebarStore.isCollapsed)
+
+const sidebarStyle = computed(() => ({
+  width: isCollapsed.value ? '60px' : '250px',
+  height: 'calc(100vh - 48px)',
+  position: 'fixed',
+  left: '0',
+  top: '48px'
+}))
 
 // Make teamspaces reactive through computed
 const teamspaces = computed(() => workspaceStore.teamspaces)
 
 onMounted(() => {
+console.log("hi")
+
   initializeCollapses()
+  // const user = JSON.parse(localStorage.getItem('authUser'))
+  // if (user && user.fullName) {
+  //   userName.value = user.fullName
+  //   console.log(userName.value)
+  // }
+const user = JSON.parse(localStorage.getItem('authUser'))
+
+if (user && user.full_name) {
+
+userName.value = user.full_name
+// profile_picture_url
+profilePictureUrl.value = user.profile_picture_url || ''
+
+// console.log("hi")
+console.log('lksfmlmd',userName.value)
+
+}
 })
 
 const handleHomeClick = () => {
@@ -161,6 +258,14 @@ const handleInboxClick = () => {
   navigationStore.clearActiveItems()
 }
 
+const handleEverythingClick = () => {
+  selectedItem.value = {
+    type: 'everything',
+    id: null
+  }
+  navigationStore.clearActiveItems()
+}
+
 const handleTeamspaceClick = (teamspace) => {
   selectedItem.value = {
     type: 'teamspace',
@@ -168,6 +273,7 @@ const handleTeamspaceClick = (teamspace) => {
   }
   toggleTeamspace(teamspace.id)
   navigationStore.setTeamspace(teamspace)
+  router.push(`/teamspace/${teamspace.id}`)
 }
 
 const handleProjectClick = (teamspaceId, project) => {
@@ -177,14 +283,55 @@ const handleProjectClick = (teamspaceId, project) => {
   }
   toggleProject(teamspaceId, project.id)
   navigationStore.setProject(project)
+  router.push(`/project/${project.id}`)
 }
 
-const handleListClick = (list) => {
+const isTeamspaceExpanded = (teamspaceId) => {
+  const instance = collapseInstances.value['teamspace' + teamspaceId]
+  if (instance) {
+    return instance._element.classList.contains('show')
+  }
+  return false
+}
+
+const isProjectExpanded = (projectId) => {
+  const instance = collapseInstances.value['project' + projectId]
+  if (instance) {
+    return instance._element.classList.contains('show')
+  }
+  return false
+}
+
+const expandTeamspace = (teamspaceId) => {
+  const instance = collapseInstances.value['teamspace' + teamspaceId]
+  if (instance && !isTeamspaceExpanded(teamspaceId)) {
+    instance.show()
+  }
+}
+
+const expandProject = (teamspaceId, projectId) => {
+  const instance = collapseInstances.value['project' + projectId]
+  if (instance && !isProjectExpanded(projectId)) {
+    instance.show()
+  }
+}
+
+const handleListClick = (list, project, teamspace) => {
   selectedItem.value = {
     type: 'list',
     id: list.id
   }
+  
+  // Set the full navigation context
+  navigationStore.setTeamspace(teamspace)
+  navigationStore.setProject(project)
   navigationStore.setList(list)
+  
+  // Ensure parent accordions are expanded
+  expandTeamspace(teamspace.id)
+  expandProject(teamspace.id, project.id)
+  
+  router.push(`/list/${list.id}`)
 }
 
 const showNewProjectModal = (teamspace, event) => {
@@ -218,11 +365,16 @@ const showNewListModal = (project, event, teamspace) => {
     return
   }
 
-  // Log the context
-  console.log(`Opening list modal for: ${currentTeamspace.name}/Project ${currentProject.name}`)
+  // Set the active teamspace and project in the navigation store
+  navigationStore.setTeamspace(currentTeamspace)
+  navigationStore.setProject(currentProject)
   
+  // Set the window variables for the modal
   window.activeProject = currentProject
   window.activeTeamspace = currentTeamspace
+  
+  // Log the context
+  console.log(`Opening list modal for: ${currentTeamspace.name}/Project ${currentProject.name}`)
   
   const modal = document.querySelector('#newListModal')
   if (modal) {
@@ -237,8 +389,73 @@ const showNewListModal = (project, event, teamspace) => {
 }
 
 const showNewTaskModal = (list) => {
-  // TODO: Implement task creation
-  console.log('Create new task in list:', list.name)
+  // Find the current teamspace and project reference from the store
+  const currentTeamspace = workspaceStore.teamspaces.find(t => {
+    return t.projects.some(p => p.lists.some(l => l.id === list.id))
+  })
+  
+  if (!currentTeamspace) {
+    console.error('Teamspace not found for list:', list.name)
+    return
+  }
+
+  const currentProject = currentTeamspace.projects.find(p => 
+    p.lists.some(l => l.id === list.id)
+  )
+  
+  if (!currentProject) {
+    console.error('Project not found for list:', list.name)
+    return
+  }
+
+  // Set the active teamspace and project in the navigation store
+  navigationStore.setTeamspace(currentTeamspace)
+  navigationStore.setProject(currentProject)
+  
+  // Set the window variables for the modal
+  window.activeList = list
+  window.activeProject = currentProject
+  window.activeTeamspace = currentTeamspace
+  
+  // Log the context
+  console.log(`Opening task modal for: ${currentTeamspace.name}/Project ${currentProject.name}/List ${list.name}`)
+  
+  const modal = document.querySelector('#newTaskModal')
+  if (modal) {
+    const taskModal = bootstrap.Modal.getInstance(modal)
+    if (taskModal) {
+      taskModal.show()
+    } else {
+      const newModal = new bootstrap.Modal(modal)
+      newModal.show()
+    }
+  }
+}
+
+const showNewTeamspaceModal = () => {
+  const modal = document.querySelector('#newTeamspaceModal')
+  if (modal) {
+    const teamspaceModal = bootstrap.Modal.getInstance(modal)
+    if (teamspaceModal) {
+      teamspaceModal.show()
+    } else {
+      const newModal = new bootstrap.Modal(modal)
+      newModal.show()
+    }
+  }
+}
+
+const showInviteMembersModal = () => {
+  const modal = document.querySelector('#inviteMembersModal')
+  if (modal) {
+    const inviteModal = bootstrap.Modal.getInstance(modal)
+    if (inviteModal) {
+      inviteModal.show()
+    } else {
+      const newModal = new bootstrap.Modal(modal)
+      newModal.show()
+    }
+  }
 }
 
 // Watch route changes to update selected item
@@ -302,6 +519,14 @@ const toggleProject = (teamspaceId, projectId) => {
     instance.toggle()
   }
 }
+
+const toggleSidebar = () => {
+  sidebarStore.toggleSidebar()
+  // Dispatch event for BreadcrumbNav to update its state
+  window.dispatchEvent(new CustomEvent('sidebar-toggle', { 
+    detail: { isCollapsed: sidebarStore.isCollapsed } 
+  }))
+}
 </script>
 
 <style>
@@ -324,6 +549,7 @@ const toggleProject = (teamspaceId, projectId) => {
   padding: 0.4rem 0.75rem;
   border: none !important;
   border-radius: 4px !important;
+  background-color: transparent !important;
 }
 
 .accordion-button::after {
@@ -337,7 +563,7 @@ const toggleProject = (teamspaceId, projectId) => {
 .accordion-button:not(.collapsed) {
   border: none !important;
   box-shadow: none !important;
-  background-color: transparent;
+  background-color: transparent !important;
   border-radius: 4px !important;
 }
 
@@ -356,12 +582,14 @@ const toggleProject = (teamspaceId, projectId) => {
 /* Remove existing accordion-body padding */
 .accordion-body {
   padding: 0;
+  background-color: transparent !important;
 }
 
 /* Add consistent indentation for each level */
 .accordion-item {
   margin-bottom: 0.5rem;
   border: none !important;
+  background-color: transparent !important;
 }
 
 /* Teamspace level - no left margin */
@@ -444,19 +672,102 @@ router-link {
 }
 
 .bi-building {
-  color: #6366f1;
+  color: inherit;
 }
 
 .bi-folder {
-  color: #8b5cf6;
+  color: inherit;
 }
 
 .bi-list-ul {
-  color: #a855f7;
+  color: inherit;
 }
 
 /* When item is active */
 .active-item .bi {
   color: inherit;
+}
+
+.workspace-section {
+  height: calc(100% - 260px);
+  overflow-y: auto;
+}
+
+.invite-section {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bs-light);
+}
+
+/* Override any white backgrounds */
+.accordion-item, 
+.accordion-header,
+.accordion-collapse {
+  background-color: transparent !important;
+}
+
+.sidebar {
+  transition: width 0.3s ease;
+  overflow-x: hidden;
+}
+
+.sidebar.collapsed {
+  width: 60px !important;
+}
+
+.sidebar.collapsed .sidebar-text {
+  display: none;
+}
+
+.sidebar.collapsed .workspace-section {
+  height: calc(100% - 100px);
+}
+
+.sidebar.collapsed .invite-section {
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem !important;
+}
+
+.sidebar.collapsed .accordion-button {
+  padding: 0.5rem !important;
+  justify-content: center;
+}
+
+.sidebar.collapsed .accordion-button::after,
+.sidebar.collapsed .accordion-body,
+.sidebar.collapsed .btn-link {
+  display: none !important;
+}
+
+.sidebar.collapsed .nav-link {
+  padding: 0.5rem !important;
+  justify-content: center;
+}
+
+.sidebar.collapsed .bi {
+  margin: 0 !important;
+  font-size: 1.2rem;
+}
+
+.collapse-btn {
+  opacity: 0.6;
+  transition: opacity 0.2s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+.collapse-btn:hover {
+  opacity: 1;
+}
+
+.collapse-btn i {
+  font-size: 1rem;
 }
 </style> 

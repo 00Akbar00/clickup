@@ -10,21 +10,25 @@ class TaskAssignee extends Model
     use HasFactory;
 
     protected $primaryKey = 'task_assignee_id';
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
+        'task_assignee_id',
         'task_id',
-        'user_id',
+        'workspace_member_id',
         'assigned_by',
+        'assigned_at',
     ];
+
+    public function workspaceMember()
+    {
+        return $this->belongsTo(WorkspaceMember::class, 'workspace_member_id');
+    }
 
     public function task()
     {
         return $this->belongsTo(Task::class, 'task_id');
-    }
-
-    public function user()
-    {
-        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function assignedBy()

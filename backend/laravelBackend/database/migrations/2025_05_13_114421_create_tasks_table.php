@@ -17,11 +17,10 @@ return new class extends Migration
             $table->string('title');
             $table->text('description')->nullable();
             $table->timestamp('due_date')->nullable();
-            $table->string('priority')->nullable();
-            $table->integer('position');
-            $table->string('status')->default('todo');
+
+            $table->enum('priority', ['high', 'normal','low','clear'])->default('clear');
+            $table->enum('status', ['todo', 'inprogress','completed'])->default('todo');
             $table->timestamp('completed_at')->nullable();
-            $table->integer('time_estimate')->nullable();
             $table->timestamps();
 
             // Foreign Keys

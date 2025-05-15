@@ -3,6 +3,8 @@
 /* Color system */
 :root {
   --app-active-color: #E5E6FF;
+  --app-primary-color: #543ED0;
+  --app-primary-hover: #4535b8;
 }
 
 /* Font size system */
@@ -33,6 +35,16 @@
 
 .app-text-2xl {
   font-size: var(--app-font-size-2xl) !important;
+}
+
+.btn-primary {
+  background-color: var(--app-primary-color) !important;
+  border-color: var(--app-primary-color) !important;
+}
+
+.btn-primary:hover {
+  background-color: var(--app-primary-hover) !important;
+  border-color: var(--app-primary-hover) !important;
 }
 
 

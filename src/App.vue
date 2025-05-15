@@ -4,17 +4,44 @@ import Navbar from './components/Navbar.vue'
 import BreadcrumbNav from './components/BreadcrumbNav.vue'
 import NewProjectModal from './components/NewProjectModal.vue'
 import NewListModal from './components/NewListModal.vue'
+import NewTaskModal from './components/NewTaskModal.vue'
+import NewTeamspaceModal from './components/NewTeamspaceModal.vue'
+import InviteMembersModal from './components/InviteMembersModal.vue'
 import { useRoute } from 'vue-router'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useSidebarStore } from './stores/sidebarStore'
 
 const route = useRoute()
+const isSidebarCollapsed = ref(false)
+const sidebarStore = useSidebarStore()
+
+const handleSidebarToggle = (event) => {
+  isSidebarCollapsed.value = event.detail.isCollapsed
+}
+
+onMounted(() => {
+  window.addEventListener('sidebar-toggle', handleSidebarToggle)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('sidebar-toggle', handleSidebarToggle)
+})
+
+const mainContentStyle = computed(() => ({
+  marginLeft: sidebarStore.isCollapsed ? '60px' : '250px',
+  transition: 'margin-left 0.3s ease',
+  width: `calc(100% - ${sidebarStore.isCollapsed ? '60px' : '250px'})`,
+  position: 'fixed',
+  right: 0
+}))
 </script>
 
 <template>
-  <div class="app-container" :class="{ 'auth-page': route.name === 'auth' }">
-    <template v-if="route.name !== 'auth'">
+  <div class="app-container" :class="{ 'auth-page': route.name === 'auth' || route.name === 'forgot-password' || route.name === 'reset-password'   }">
+    <template v-if="route.name !== 'auth' && route.name !== 'forgot-password' && route.name !== 'reset-password'">
       <Navbar />
       <Sidebar />
-      <main class="main-content">
+      <main :style="mainContentStyle">
         <BreadcrumbNav />
         <div class="content-area">
           <router-view></router-view>
@@ -23,6 +50,9 @@ const route = useRoute()
       <!-- Modals at root level -->
       <NewProjectModal ref="newProjectModal" />
       <NewListModal ref="newListModal" />
+      <NewTaskModal />
+      <NewTeamspaceModal />
+      <InviteMembersModal />
     </template>
     <template v-else>
       <router-view></router-view>
@@ -36,6 +66,7 @@ const route = useRoute()
 
 .app-container {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
   padding-top: 48px; /* Match navbar height */
 }
@@ -45,19 +76,25 @@ const route = useRoute()
   display: block;
 }
 
-.main-content {
+main {
   flex: 1;
-  margin-left: 250px; /* Match sidebar width */
-  min-height: calc(100vh - 48px); /* Subtract navbar height */
-  background-color: #f8f9fa;
-}
-
-.auth-page .main-content {
-  margin-left: 0;
+  position: relative;
+  background-color: #fff;
+  transition: margin-left 0.3s ease;
 }
 
 .content-area {
   padding: 1.5rem;
+  background-color: white;
+  min-height: calc(100vh - 96px); /* Subtract navbar + breadcrumb height */
+  width: 100%;
+}
+
+/* Set white background for all route components */
+.content-area > *:not(.auth-page) {
+  background-color: white;
+  border-radius: 8px;
+  width: 100%;
 }
 
 /* Global modal styles */

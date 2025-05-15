@@ -1,94 +1,117 @@
 <?php
 
 namespace App\Http\Controllers\Projects;
-use App\Http\Controllers\Controller;
 
-use App\Models\Project;
+use App\Http\Controllers\Controller;
+use App\Services\ProjectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Str;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
 {
-    // Create a new project
-    public function createProject(Request $request,$team_id)
+    protected $projectService;
+
+    public function __construct(ProjectService $projectService)
     {
-        $request->validate([
-            
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'visibility' => 'in:public,private',
-            'color_code' => 'nullable|string|max:7',
-        ]);
-
-        $project = Project::create([
-            'project_id' => (string) Str::uuid(),
-            'team_id' => $team_id,
-            'name' => $request->name,
-            'description' => $request->description,
-            'color_code' => $request->color_code,
-            'visibility' => $request->visibility ?? 'private',
-            'status' => 'active',
-            'created_by' => Auth::user()->user_id,
-        ]);
-
-        return response()->json(['message' => 'Project created successfully', 'project' => $project], 201);
+        $this->projectService = $projectService;
     }
 
-    //Get Projects
+    public function createProject(Request $request, $team_id)
+    {
+        if (!Auth::check()) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'visibility' => 'in:public,private',
+                'color_code' => 'nullable|string|max:7',
+            ]);
+
+            $project = $this->projectService->createProject($validated, $team_id);
+            return response()->json(['message' => 'Project created successfully', 'project' => $project], 201);
+
+        } catch (ValidationException $e) {
+            return response()->json(['error' => 'Validation error', 'messages' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Failed to create project', 'details' => $e->getMessage()], 500);
+        }
+    }
+
     public function getProjects($team_id)
     {
-        $projects = Project::where('team_id', $team_id)->get();
-
-        return response()->json(['projects' => $projects]);
+        try {
+            $projects = $this->projectService->getProjects($team_id);
+            return response()->json(['projects' => $projects]);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Failed to retrieve projects', 'details' => $e->getMessage()], 500);
+        }
     }
 
-    //Get Project Details
     public function getProjectDetails($project_id)
     {
-        $project = Project::findOrFail($project_id);
-
-        return response()->json(['project' => $project]);
+        try {
+            $project = $this->projectService->getProjectDetails($project_id);
+            return response()->json(['project' => $project]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Project not found'], 404);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Failed to get project details', 'details' => $e->getMessage()], 500);
+        }
     }
 
-    //Update Project 
     public function updateProject(Request $request, $project_id)
     {
-        $project = Project::findOrFail($project_id);
+        try {
+            $validated = $request->validate([
+                'name' => 'required|string|max:255',
+                'description' => 'nullable|string',
+                'visibility' => 'in:public,private',
+                'color_code' => 'nullable|string|max:7',
+            ]);
 
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'visibility' => 'in:public,private',
-            'color_code' => 'nullable|string|max:7',
-        ]);
-
-        $project->update($request->only([
-            'name', 'description', 'color_code'
-        ]));
-
-        return response()->json(['message' => 'Project updated successfully', 'project' => $project]);
+            $project = $this->projectService->updateProject($project_id, $validated);
+            return response()->json(['message' => 'Project updated successfully', 'project' => $project]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Project not found'], 404);
+        } catch (ValidationException $e) {
+            return response()->json(['error' => 'Validation error', 'messages' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Failed to update project', 'details' => $e->getMessage()], 500);
+        }
     }
 
-    //Delete Project 
     public function deleteProject($project_id)
     {
-        $project = Project::findOrFail($project_id);
-        $project->delete();
-
-        return response()->json(['message' => 'Project deleted successfully']);
+        try {
+            $this->projectService->deleteProject($project_id);
+            return response()->json(['message' => 'Project deleted successfully']);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Project not found'], 404);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Failed to delete project', 'details' => $e->getMessage()], 500);
+        }
     }
+
     public function changeProjectStatus(Request $request, $project_id)
     {
-        $project = Project::findOrFail($project_id);
+        try {
+            $validated = $request->validate([
+                'status' => 'required|in:active,archived',
+            ]);
 
-        $request->validate([
-            'status' => 'required|in:active,archived',
-        ]);
-
-        $project->status = $request->status;
-        $project->save();
-
-        return response()->json(['message' => 'Project status updated', 'project' => $project]);
+            $project = $this->projectService->changeStatus($project_id, $validated['status']);
+            return response()->json(['message' => 'Project status updated', 'project' => $project]);
+        } catch (ModelNotFoundException $e) {
+            return response()->json(['error' => 'Project not found'], 404);
+        } catch (ValidationException $e) {
+            return response()->json(['error' => 'Validation error', 'messages' => $e->errors()], 422);
+        } catch (\Throwable $e) {
+            return response()->json(['error' => 'Failed to update project status', 'details' => $e->getMessage()], 500);
+        }
     }
 }

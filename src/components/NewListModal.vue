@@ -16,9 +16,14 @@
             ref="listInput"
           >
         </div>
-        <div class="modal-footer py-3">
-          <button type="button" class="btn btn-link text-dark" @click="hide">Cancel</button>
-          <button type="button" class="btn btn-primary px-4" @click="createList">Create</button>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button 
+            type="button" 
+            class="btn btn-primary" 
+            @click="createList"
+            :disabled="!listName.trim()"
+          >Create List</button>
         </div>
       </div>
     </div>
@@ -48,24 +53,22 @@ const hide = () => {
 }
 
 const createList = () => {
-  const project = window.activeProject
-  const teamspace = window.activeTeamspace
-
-  if (listName.value.trim() && project && teamspace) {
-    // Get the correct project from the correct teamspace
-    const currentTeamspace = workspaceStore.teamspaces.find(t => t.id === teamspace.id)
-    if (!currentTeamspace) {
-      console.error('Teamspace not found:', teamspace.name)
+  if (listName.value.trim()) {
+    const teamspaceId = window.activeTeamspace?.id
+    const projectId = window.activeProject?.id
+    
+    if (!teamspaceId || !projectId) {
+      console.error('Missing teamspace or project reference')
       return
     }
 
-    const currentProject = currentTeamspace.projects.find(p => p.id === project.id)
-    if (!currentProject) {
-      console.error('Project not found in teamspace:', teamspace.name)
+    const project = workspaceStore.getProject(teamspaceId, projectId)
+    if (!project) {
+      console.error('Project not found')
       return
     }
 
-    const newId = Math.max(0, ...(currentProject.lists?.map(l => l.id) || [0])) + 1
+    const newId = Math.max(0, ...project.lists.map(l => l.id), 0) + 1
     
     const newList = {
       id: newId,
@@ -73,10 +76,7 @@ const createList = () => {
       tasks: []
     }
     
-    // Log where the list is being created
-    console.log(`Creating list "${newList.name}" in: ${teamspace.name}/Project ${currentProject.name}`)
-    
-    workspaceStore.addList(currentProject, newList)
+    workspaceStore.addList(teamspaceId, projectId, newList)
     hide()
   }
 }
@@ -103,24 +103,32 @@ defineExpose({
 }
 
 .modal-title {
-  font-size: 1.25rem;
+  font-size: var(--app-font-size-lg);
 }
 
 .form-control {
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
+  padding: 0.5rem 1rem;
+  font-size: var(--app-font-size-base);
+  border-radius: 6px;
+  border: 1.5px solid rgba(0, 0, 0, 0.1);
+  box-shadow: none;
 }
 
 .form-control:focus {
-  box-shadow: 0 0 0 0.25rem rgba(13,110,253,.15);
+  border-color: var(--app-primary-color);
+  box-shadow: 0 0 8px rgba(84, 62, 208, 0.25);
 }
 
 .btn {
-  font-size: 1rem;
+  font-size: var(--app-font-size-base);
   padding: 0.5rem 1rem;
 }
 
-.modal-header, .modal-footer {
+.modal-header {
+  border-bottom: none;
+}
+
+.modal-footer {
   border-color: rgba(0,0,0,.1);
 }
 </style> 

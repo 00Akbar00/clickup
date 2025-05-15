@@ -14,7 +14,7 @@ class PasswordResetService
         try {
             
             $token = base64_encode(Str::random(40)); 
-            $resetURL = url('/api/reset-password/' . $token);
+            $resetURL = url('http://localhost:5173/api/reset-password/' . $token);
             $user->reset_token = $token;
             $user->reset_token_expires_at = now()->addHours(); 
             $user->save();

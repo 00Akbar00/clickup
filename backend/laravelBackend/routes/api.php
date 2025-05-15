@@ -3,8 +3,11 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordResetController;
 use App\Http\Controllers\Auth\SignupController;
+use App\Http\Controllers\Comment\CommentController;
 use App\Http\Controllers\Lists\ListController;
 use App\Http\Controllers\Projects\ProjectController;
+use App\Http\Controllers\Tasks\TaskAssigneeController;
+use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Teams\TeamController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -20,17 +23,20 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-Route::post("forgot-password",[PasswordResetController::class,'forgotPassword']);
+Route::post("forgot-password", [PasswordResetController::class, 'forgotPassword']);
 // Route::getdocke('reset-password/{token}', [PasswordResetController::class, 'showResetPasswordForm']);
 Route::middleware('check.token.expiry')->group(function () {
-    Route::post("reset-password/{token}",[PasswordResetController::class,'resetPassword']);
+    Route::post("reset-password/{token}", [PasswordResetController::class, 'resetPassword']);
 });
 
+//Workspace routes
 Route::middleware('auth:api')->group(function () {
     Route::prefix('workspaces')->group(function () {
-        Route::post('/', [WorkspaceController::class, 'createWorkspace']);
         Route::get('/', [WorkspaceController::class, 'getWorkspaces']);
-        Route::post('{workspaceId}/generate-invite', [WorkspaceController::class, 'generateInviteToken']);
+        Route::get('/{workspace_id}', [WorkspaceController::class, 'getWorkspace']);
+        Route::put('/{workspace_id}', [WorkspaceController::class, 'updateWorkspace']);
+        Route::post('/', [WorkspaceController::class, 'createWorkspace']);
+        Route::delete('/{workspace_id}', [WorkspaceController::class, 'deleteWorkspace']);
     });
 
     Route::post('/invite/{token}', [WorkspaceController::class, 'processInvite']);
@@ -64,8 +70,33 @@ Route::middleware('auth:api')->group(function () {
 Route::middleware('auth:api')->group(function () {
     Route::post('/lists/{project_id}', [ListController::class, 'createList']);
     Route::get('/projects/{project_id}/lists', [ListController::class, 'getLists']);
+    Route::get('lists/{list_id}', [ListController::class, 'getListDetails']);
     Route::put('/lists/{list_id}', [ListController::class, 'updateList']);
     Route::delete('/lists/{list_id}', [ListController::class, 'deleteList']);
-    Route::patch('/lists/reorder', [ListController::class, 'reorderLists']);
 
+});
+
+
+Route::middleware('auth:api')->group(function () {
+    Route::post('/tasks/{list_id}', [TaskController::class, 'createTask']);
+    Route::get('/lists/{list_id}/tasks', [TaskController::class, 'getTasks']);
+    Route::get('/tasks/{task_id}', [TaskController::class, 'getTaskDetails']);
+    Route::put('/tasks/{task_id}', [TaskController::class, 'updateTask']);
+    Route::delete('/tasks/{task_id}', [TaskController::class, 'deleteTask']);
+    Route::patch('/tasks/{task_id}/status', [TaskController::class, 'changeTaskStatus']);
+});
+
+Route::middleware('auth:api')->group(function () {
+    Route::prefix('workspace/{workspace_id}')->group(function () {
+        Route::get('/members', [TaskAssigneeController::class, 'getWorkspaceUsers']);
+        Route::post('/tasks/{task_id}/assign', [TaskAssigneeController::class, 'assignTask']);
+        Route::delete('/tasks/{task_id}/unassign/{workspace_member_id}', [TaskAssigneeController::class, 'unassignTask']);
+    });
+
+    Route::get('/tasks/{task_id}/assignees', [TaskAssigneeController::class, 'getTaskAssignees']);
+});
+
+Route::middleware('auth:api')->group(function () {
+Route::post('/tasks/{task_id}/comments', [CommentController::class, 'createComment']);
+Route::get('/tasks/{task_id}/comments', [CommentController::class, 'getComments']);
 });

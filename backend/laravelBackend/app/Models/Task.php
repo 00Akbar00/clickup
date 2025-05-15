@@ -10,18 +10,18 @@ class Task extends Model
     use HasFactory;
 
     protected $primaryKey = 'task_id';
-
+    public $incrementing = false;
+    protected $keyType = 'string';
     protected $fillable = [
+        'task_id',
         'list_id',
         'title',
         'description',
         'created_by',
         'due_date',
         'priority',
-        'position',
         'status',
         'completed_at',
-        'time_estimate',
     ];
 
     protected $casts = [
@@ -41,7 +41,7 @@ class Task extends Model
 
     public function assignees()
     {
-        return $this->belongsToMany(User::class, 'task_assignees', 'task_id', 'user_id')
-            ->withTimestamps();
+        return $this->belongsToMany(WorkspaceMember::class, 'task_assignees', 'task_id', 'workspace_member_id');
     }
+
 }

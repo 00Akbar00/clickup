@@ -34,5 +34,10 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+    'node' => [
+    'comment_url' => env('NODE_COMMENT_API_URL', 'http://node:3001'),
+],
+
+
 
 ];

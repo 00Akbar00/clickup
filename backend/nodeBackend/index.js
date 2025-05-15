@@ -1,57 +1,77 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const mongoose = require("mongoose");
-const cors = require("cors");
-const http = require("http");
-const { Server } = require("socket.io");
-const redisSub = require('./redis/redis-sub');
-require("dotenv").config();
+// server.js
+const express = require('express');
+const http = require('http');
+require('dotenv').config();
+const socketIo = require('socket.io');
+const cors = require('cors');
+const connectDB = require('./config/db');
+const RedisSubscriber = require('./redis/redis-sub');
+const ChangeStreamService = require('./Services/changeStream');
+const commentRoutes = require('./Routes/commentRoutes');
 
-const connectDB = require("./config/db");
+class Server {
+  constructor() {
+    this.app = express();
+    this.server = http.createServer(this.app);
+    this.primaryPort = parseInt(process.env.PORT || "3001");
+    this.backupPorts = [this.primaryPort + 1, this.primaryPort + 2, this.primaryPort + 3];
+    this.io = socketIo(this.server, {
+      cors: {
+        origin: "*", 
+        methods: ["GET", "POST"]
+      }
+    });
+    
+    this.setupMiddleware();
+    this.setupRoutes();
+    this.setupSocketIO();
+    this.setupRedis();
+  }
 
-const app = express();
-const server = http.createServer(app);
+  setupMiddleware() {
+    this.app.use(cors());
+    this.app.use(express.json());
+  }
 
-const primaryPort = parseInt(process.env.PORT || "3001");
-const backupPorts = [primaryPort + 1, primaryPort + 2, primaryPort + 3];
+  setupRoutes() {
+    this.app.use('/api/comments', commentRoutes);
+  }
 
-// Middleware
-app.use(cors());
-app.use(bodyParser.json());
+  setupSocketIO() {
+    this.io.on("connection", (socket) => {
+      console.log(`🔌 User connected: ${socket.id}`);
+    
+      socket.on("join_task", (taskId) => {
+        socket.join(taskId);
+        console.log(`📁 Socket ${socket.id} joined task room: ${taskId}`);
+        console.log(`Current rooms:`, [...socket.rooms]); 
+      });
 
-// MongoDB connection
-connectDB();
-redisSub();
+    });
+  }
+  async setupRedis() {
+    try {
+      this.redisSubscriber = new RedisSubscriber(this.io);
+      await ChangeStreamService.watchComments();
+    } catch (err) {
+      console.error("❌ Failed to setup Redis:", err);
+      process.exit(1);
+    }
+  }
 
+  start() {
+    this.tryPort(this.primaryPort);
+  }
 
-// WebSocket setup
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
-
-
-io.on("connection", (socket) => {
-  console.log(`✅ User connected: ${socket.id}`);
-
-});
-
-
-// Port fallback strategy
-const startServer = async () => {
-  tryPort(primaryPort);
-
-  function tryPort(port) {
-    server.on("error", (e) => {
+  tryPort(port) {
+    this.server.on("error", (e) => {
       if (e.code === "EADDRINUSE") {
         console.error(`Port ${port} is already in use.`);
-        const nextPort = backupPorts.shift();
+        const nextPort = this.backupPorts.shift();
         if (nextPort) {
           console.log(`Trying alternative port ${nextPort}...`);
-          server.close();
-          tryPort(nextPort);
+          this.server.close();
+          this.tryPort(nextPort);
         } else {
           console.error("All ports are in use. Exiting.");
           process.exit(1);
@@ -61,11 +81,19 @@ const startServer = async () => {
       }
     });
 
-    server.listen(port, "0.0.0.0", () => {
+    this.server.listen(port, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${port}`);
-      console.log(`📡 API available at http://localhost:${port}/api`);
+      console.log(`📡 API available at http://localhost:${port}`);
     });
   }
-};
+}
 
-startServer();
+connectDB()
+  .then(() => {
+    const server = new Server();
+    server.start();
+  })
+  .catch(err => {
+    console.error("❌ Failed to connect to MongoDB:", err);
+    process.exit(1);
+  });
