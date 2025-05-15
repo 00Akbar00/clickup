@@ -1283,6 +1283,194 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "Workspace",
+			"item": [
+				{
+					"name": "createWorkspace",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDcyNDU1MTQsImV4cCI6MTc0NzI1MjcxNCwic3ViIjoiZWJlN2FjN2YtYjI5YS00OTRmLTk5YzQtMzc1OTVkOTlhMDE0IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.NbUMDZYNyJuJp2G-4LvzbAN0M_ZpDULONwlD_822qVM",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"My Team Workspace\",\n  \"description\": \"This is for our main project team\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost/api/workspaces/",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								""
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getWorkspace",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDcyNDU1MTQsImV4cCI6MTc0NzI1MjcxNCwic3ViIjoiZWJlN2FjN2YtYjI5YS00OTRmLTk5YzQtMzc1OTVkOTlhMDE0IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.NbUMDZYNyJuJp2G-4LvzbAN0M_ZpDULONwlD_822qVM",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost/api/workspaces",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "getWorkspaceById",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDcyOTE4MjQsImV4cCI6MTc0NzI5OTAyNCwic3ViIjoiZDU0NjA3MjktMmZjYi00ZDg0LWEwMTgtMGQzYWJhMmJkM2ExIiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.JtsgqNWts3pn6b35s-Mek_D4HZyDFmLgVj_4MS2wV1s",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "http://localhost/api/workspaces?workspace_id=41872790-0d8d-4e04-a834-cf40477b26bf",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces"
+							],
+							"query": [
+								{
+									"key": "workspace_id",
+									"value": "41872790-0d8d-4e04-a834-cf40477b26bf"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "updateWorkspace",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDczMDMzNjUsImV4cCI6MTc0NzMxMDU2NSwic3ViIjoiYmQxMTczZDEtNjlhNi00MGRhLWIxYTgtMWUyNjEwMTdiYTM1IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.SEmEiq0erOmhAor_2h5w2M7hl5CvGNXTb--avXZA4bs",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Updated Workspace Name\",\n  \"description\": \"This is the new workspace description.\",\n  \"logo\":\"\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost/api/workspaces/8f2aec59-3c99-40b9-9184-3dccc8477e24",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"8f2aec59-3c99-40b9-9184-3dccc8477e24"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteWorkspace",
+					"request": {
+						"method": "DELETE",
+						"header": []
+					},
+					"response": []
+				}
+			]
 		}
 	]
 }
