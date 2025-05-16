@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
 use App\Providers\RouteServiceProvider;
 use App\Http\Controllers\Workspace\WorkspaceController;
+use App\Http\Controllers\Workspace\WorkspaceMemberController;
+
 
 Route::middleware(['throttle:signup-limiter'])->group(function () {
     Route::post('/login', [LoginController::class, 'login']);
@@ -38,9 +40,11 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/', [WorkspaceController::class, 'createWorkspace']);
         Route::delete('/{workspace_id}', [WorkspaceController::class, 'deleteWorkspace']);
     });
+});
 
-    Route::post('/invite/{token}', [WorkspaceController::class, 'processInvite']);
-    Route::get('/invite/pending', [WorkspaceController::class, 'checkPendingInvites']);
+Route::prefix('workspaces/{workspace_id}')->middleware(['auth:api'])->group(function () {
+    Route::get('/members', [WorkspaceMemberController::class, 'listMembers']);
+    Route::post('/members', [WorkspaceMemberController::class, 'addMember']);
 });
 
 Route::prefix('teams')->middleware(['auth:api'])->group(function () {

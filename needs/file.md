@@ -3,7 +3,7 @@ https://docs.google.com/document/d/1BFduQy4cMzJJNzLIbUNadcP5piajizxeW8BvTXbDLjU/
 
 DATABASE SCHEMA UPDATED
 
-TTable users {
+Table users {
 
 user_id uuid [primary key]
 
