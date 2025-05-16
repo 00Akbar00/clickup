@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "a5d447ff-b5f8-4b8d-bdb3-1f993b26d58d",
-		"name": "ClickUp",
+		"_postman_id": "ea83d5f1-ceef-4cbb-97ad-805e5f999c4c",
+		"name": "ClickUp Copy",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "34859675",
-		"_collection_link": "https://sf8888-4196.postman.co/workspace/sf-Workspace~5b3ea066-f639-41d1-899e-42718e8805a9/collection/34859675-a5d447ff-b5f8-4b8d-bdb3-1f993b26d58d?action=share&source=collection_link&creator=34859675"
+		"_exporter_id": "44186082",
+		"_collection_link": "https://api-team-4493.postman.co/workspace/API-Team-Workspace~dd72f780-c4b6-4ec7-82ce-72f164f0f164/collection/44186082-ea83d5f1-ceef-4cbb-97ad-805e5f999c4c?action=share&source=collection_link&creator=44186082"
 	},
 	"item": [
 		{
@@ -39,7 +39,7 @@
 								},
 								{
 									"key": "email",
-									"value": "fatimatariq0802+7@gmail.com",
+									"value": "fatimatariq0802+2@gmail.com",
 									"type": "text"
 								},
 								{
@@ -83,7 +83,7 @@
 						"header": [],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\":\"fatimatariq0802+7@gmail.com\",\n    \"password\":\"secret124\"\n}",
+							"raw": "{\n    \"email\":\"fatimatariq0802+1@gmail.com\",\n    \"password\":\"secret124\"\n}",
 							"options": {
 								"raw": {
 									"language": "json"
@@ -1295,7 +1295,7 @@
 							"bearer": [
 								{
 									"key": "token",
-									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDcyNDU1MTQsImV4cCI6MTc0NzI1MjcxNCwic3ViIjoiZWJlN2FjN2YtYjI5YS00OTRmLTk5YzQtMzc1OTVkOTlhMDE0IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.NbUMDZYNyJuJp2G-4LvzbAN0M_ZpDULONwlD_822qVM",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDczOTk4OTQsImV4cCI6MTc0NzQzMjI5NCwic3ViIjoiMjIzMDAwNDgtY2Q2OC00YzY1LWI0OGItYzRiMmQ0MTMxYzljIiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzFAZ21haWwuY29tIn0.xk7bKivxdfxGWyQx2vqBf2ndiydZ76hHPOnqFqqaxGs",
 									"type": "string"
 								}
 							]
@@ -1323,15 +1323,14 @@
 							}
 						},
 						"url": {
-							"raw": "http://localhost/api/workspaces/",
+							"raw": "http://localhost/api/workspaces",
 							"protocol": "http",
 							"host": [
 								"localhost"
 							],
 							"path": [
 								"api",
-								"workspaces",
-								""
+								"workspaces"
 							]
 						}
 					},
@@ -1556,7 +1555,10 @@
 					"name": "deleteMember",
 					"request": {
 						"method": "DELETE",
-						"header": []
+						"header": [],
+						"url": {
+							"raw": ""
+						}
 					},
 					"response": []
 				},
@@ -1564,7 +1566,10 @@
 					"name": "leaveWorkspace",
 					"request": {
 						"method": "GET",
-						"header": []
+						"header": [],
+						"url": {
+							"raw": ""
+						}
 					},
 					"response": []
 				},
@@ -1616,6 +1621,257 @@
 								"members",
 								"1298e521-4de3-40c9-b9f1-441ee8170968",
 								"role"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "WorkspaceInvite",
+			"item": [
+				{
+					"name": "GenerateInvite",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDczOTk4OTQsImV4cCI6MTc0NzQzMjI5NCwic3ViIjoiMjIzMDAwNDgtY2Q2OC00YzY1LWI0OGItYzRiMmQ0MTMxYzljIiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzFAZ21haWwuY29tIn0.xk7bKivxdfxGWyQx2vqBf2ndiydZ76hHPOnqFqqaxGs",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"emails\":[\"fatimatariq0802+1@gmail.com\",\"fatimatariq0802+2@gmail.com\"],\n    \"role\":\"member\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost/api/workspaces/f2cdeab3-3cff-4809-8223-801562db25b7/invites/link",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"f2cdeab3-3cff-4809-8223-801562db25b7",
+								"invites",
+								"link"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "sendWorkspaceInvite",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDczOTk4OTQsImV4cCI6MTc0NzQzMjI5NCwic3ViIjoiMjIzMDAwNDgtY2Q2OC00YzY1LWI0OGItYzRiMmQ0MTMxYzljIiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzFAZ21haWwuY29tIn0.xk7bKivxdfxGWyQx2vqBf2ndiydZ76hHPOnqFqqaxGs",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"emails\": [\"ma341604@gmai.com\", \"fatimatariq0802+2@gmail.com\"],\n  \"role\": \"member\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost/api/workspaces/f2cdeab3-3cff-4809-8223-801562db25b7/invites/send",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"f2cdeab3-3cff-4809-8223-801562db25b7",
+								"invites",
+								"send"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "RevokeInvite",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDczOTk4OTQsImV4cCI6MTc0NzQzMjI5NCwic3ViIjoiMjIzMDAwNDgtY2Q2OC00YzY1LWI0OGItYzRiMmQ0MTMxYzljIiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzFAZ21haWwuY29tIn0.xk7bKivxdfxGWyQx2vqBf2ndiydZ76hHPOnqFqqaxGs",
+									"type": "string"
+								}
+							]
+						},
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost/api/workspaces/f2cdeab3-3cff-4809-8223-801562db25b7/invites",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"f2cdeab3-3cff-4809-8223-801562db25b7",
+								"invites"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "VerifyInviteToken",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDczNzUxNTcsImV4cCI6MTc0NzM4MjM1Nywic3ViIjoiYmQxMTczZDEtNjlhNi00MGRhLWIxYTgtMWUyNjEwMTdiYTM1IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.6Gq_PeoKmtwZT1Fu1uHwrOc8oeO6fxdeEm5Ye0S6Bnk",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost/api/invites/verify?token=9eec6905-886d-4e86-a4d6-677c3f9a4858",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"invites",
+								"verify"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "9eec6905-886d-4e86-a4d6-677c3f9a4858"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "JoinWorkspace",
+					"protocolProfileBehavior": {
+						"disableBodyPruning": true
+					},
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDczNzUxNTcsImV4cCI6MTc0NzM4MjM1Nywic3ViIjoiYmQxMTczZDEtNjlhNi00MGRhLWIxYTgtMWUyNjEwMTdiYTM1IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.6Gq_PeoKmtwZT1Fu1uHwrOc8oeO6fxdeEm5Ye0S6Bnk",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"9eec6905-886d-4e86-a4d6-677c3f9a4858\"\n}\n",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost/api/invites/join",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"invites",
+								"join"
 							]
 						}
 					},
