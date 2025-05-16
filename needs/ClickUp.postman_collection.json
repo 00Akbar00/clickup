@@ -1,10 +1,10 @@
 {
 	"info": {
-		"_postman_id": "7b6658f3-48ed-401f-baac-3490970de318",
+		"_postman_id": "a5d447ff-b5f8-4b8d-bdb3-1f993b26d58d",
 		"name": "ClickUp",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "44186082",
-		"_collection_link": "https://api-team-4493.postman.co/workspace/API-Team-Workspace~dd72f780-c4b6-4ec7-82ce-72f164f0f164/collection/44186082-7b6658f3-48ed-401f-baac-3490970de318?action=share&source=collection_link&creator=44186082"
+		"_exporter_id": "34859675",
+		"_collection_link": "https://sf8888-4196.postman.co/workspace/sf-Workspace~5b3ea066-f639-41d1-899e-42718e8805a9/collection/34859675-a5d447ff-b5f8-4b8d-bdb3-1f993b26d58d?action=share&source=collection_link&creator=34859675"
 	},
 	"item": [
 		{
@@ -1466,7 +1466,158 @@
 					"name": "deleteWorkspace",
 					"request": {
 						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": ""
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "WorkspaceMember",
+			"item": [
+				{
+					"name": "getMember",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDczNTUzNjQsImV4cCI6MTc0NzM2MjU2NCwic3ViIjoiMDkzY2E0M2ItMTAzZS00OTRhLTliODctNTFiOTg4YjQ4NDY2IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.MG9ltfw5CGrH1pVOufd6c8QZJyfRZf_R2mElOYq9Y6U",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost/api/workspaces/5b26c178-8f0a-44c6-8c02-e31f9086f688/members",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"5b26c178-8f0a-44c6-8c02-e31f9086f688",
+								"members"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "addMember",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "http://localhost/api/workspaces/5b26c178-8f0a-44c6-8c02-e31f9086f688/members",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"5b26c178-8f0a-44c6-8c02-e31f9086f688",
+								"members"
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "deleteMember",
+					"request": {
+						"method": "DELETE",
 						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "leaveWorkspace",
+					"request": {
+						"method": "GET",
+						"header": []
+					},
+					"response": []
+				},
+				{
+					"name": "updateMemberRole",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3NDczNTYwMzEsImV4cCI6MTc0NzM2MzIzMSwic3ViIjoiMDkzY2E0M2ItMTAzZS00OTRhLTliODctNTFiOTg4YjQ4NDY2IiwibmFtZSI6IkZhdGltYSBUYXJpcSIsImVtYWlsIjoiZmF0aW1hdGFyaXEwODAyKzdAZ21haWwuY29tIn0.PCGebuKl3180icheFaLWnUfoGyjRdOo0WW_2j6b62DI",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\r\n    \"role\": \"member\"\r\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "http://localhost/api/workspaces/5b26c178-8f0a-44c6-8c02-e31f9086f688/members/1298e521-4de3-40c9-b9f1-441ee8170968/role",
+							"protocol": "http",
+							"host": [
+								"localhost"
+							],
+							"path": [
+								"api",
+								"workspaces",
+								"5b26c178-8f0a-44c6-8c02-e31f9086f688",
+								"members",
+								"1298e521-4de3-40c9-b9f1-441ee8170968",
+								"role"
+							]
+						}
 					},
 					"response": []
 				}
