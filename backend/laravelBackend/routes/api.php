@@ -45,6 +45,9 @@ Route::middleware('auth:api')->group(function () {
 Route::prefix('workspaces/{workspace_id}')->middleware(['auth:api'])->group(function () {
     Route::get('/members', [WorkspaceMemberController::class, 'listMembers']);
     Route::post('/members', [WorkspaceMemberController::class, 'addMember']);
+    Route::put('/members/{member_id}/role', [WorkspaceMemberController::class, 'updateMemberRole']);
+    Route::delete('/members/{member_id}', [WorkspaceMemberController::class, 'removeMember']);
+    Route::delete('/leave', [WorkspaceMemberController::class, 'leaveWorkspace']);
 });
 
 Route::prefix('teams')->middleware(['auth:api'])->group(function () {
