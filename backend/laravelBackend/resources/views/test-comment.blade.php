@@ -87,7 +87,7 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({
-                            sender_id: "67dfa368-4012-4a2e-8598-7ff3c5743b99",
+                            sender_id: "51d0da3a-dd0c-4532-a2a3-d17aa299601e",
                             comment: comment
                         })
                     });

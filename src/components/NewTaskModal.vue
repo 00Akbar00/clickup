@@ -1,10 +1,10 @@
 <template>
-  <div class="modal fade" id="newTaskModal" ref="modalRef" tabindex="-1">
+  <div class="modal fade" id="newTaskModal" ref="modalRef" tabindex="-1" data-bs-backdrop="static" @keydown="handleKeydown">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-white shadow-sm border">
         <div class="modal-header py-3">
           <h5 class="modal-title">Create New Task</h5>
-          <button type="button" class="btn-close" @click="hide"></button>
+          <button type="button" class="btn-close" @click="hide" aria-label="Close"></button>
         </div>
         <div class="modal-body py-4">
           <div class="mb-3">
@@ -52,10 +52,9 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button 
             type="button" 
-            class="btn btn-primary" 
+            class="btn btn-primary w-100" 
             @click="createTask"
             :disabled="!taskName.trim()"
           >Create Task</button>
@@ -69,11 +68,13 @@
 import { ref, onMounted } from 'vue'
 import { Modal } from 'bootstrap'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useNavigationStore } from '../stores/navigationStore'
 
 const workspaceStore = useWorkspaceStore()
-const modal = ref(null)
+const navigationStore = useNavigationStore()
 const modalRef = ref(null)
 const taskInput = ref(null)
+let modalInstance = null
 
 // Form fields
 const taskName = ref('')
@@ -83,14 +84,18 @@ const priority = ref('normal')
 const status = ref('todo')
 
 onMounted(() => {
-  modal.value = new Modal(modalRef.value, {
-    backdrop: true
-  })
+  modalInstance = new Modal(modalRef.value)
 })
 
 const hide = () => {
-  modal.value?.hide()
+  modalInstance?.hide()
   resetForm()
+}
+
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
+    hide()
+  }
 }
 
 const resetForm = () => {
@@ -102,36 +107,36 @@ const resetForm = () => {
 }
 
 const createTask = () => {
-  if (taskName.value.trim()) {
-    const teamspaceId = window.activeTeamspace?.id
-    const projectId = window.activeProject?.id
-    const listId = window.activeList?.id
-    
-    if (!teamspaceId || !projectId || !listId) {
-      console.error('Missing teamspace, project, or list reference')
-      return
-    }
+  if (!taskName.value.trim()) return
 
-    const list = workspaceStore.getList(teamspaceId, projectId, listId)
-    if (!list) {
-      console.error('List not found')
-      return
-    }
-
-    const newId = Math.max(0, ...list.tasks.map(t => t.id), 0) + 1
-    
-    const newTask = {
-      id: newId,
-      name: taskName.value.trim(),
-      assignee: assignedTo.value.trim(),
-      dueDate: dueDate.value,
-      priority: priority.value,
-      status: status.value
-    }
-    
-    workspaceStore.addTask(teamspaceId, projectId, listId, newTask)
-    hide()
+  const teamspaceId = window.activeTeamspace?.id
+  const projectId = window.activeProject?.id
+  const listId = window.activeList?.id
+  
+  if (!teamspaceId || !projectId || !listId) {
+    console.error('Missing teamspace, project, or list reference')
+    return
   }
+
+  const list = workspaceStore.getList(teamspaceId, projectId, listId)
+  if (!list) {
+    console.error('List not found')
+    return
+  }
+
+  const newId = Math.max(0, ...list.tasks.map(t => t.id), 0) + 1
+  
+  const newTask = {
+    id: newId,
+    name: taskName.value.trim(),
+    assignee: assignedTo.value.trim(),
+    dueDate: dueDate.value,
+    priority: priority.value,
+    status: status.value
+  }
+  
+  workspaceStore.addTask(teamspaceId, projectId, listId, newTask)
+  hide()
 }
 
 // Expose methods to parent components

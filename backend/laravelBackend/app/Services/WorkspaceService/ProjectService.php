@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\WorkspaceService;
 
 use App\Models\Project;
 use Illuminate\Support\Facades\Auth;

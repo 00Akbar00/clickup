@@ -2,7 +2,7 @@
 namespace App\Http\Controllers\Lists;
 
 use App\Http\Controllers\Controller;
-use App\Services\ListService;
+use App\Services\WorkspaceService\ListService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Exception;

@@ -103,52 +103,52 @@ const route = useRoute()
 
 // Find the list based on route params
 const list = computed(() => {
-  const listId = route.params.id
+  const teamspace = workspaceStore.teamspaces.find(
+    t => t.name === decodeURIComponent(route.params.teamspaceName)
+  );
+  if (!teamspace) return null;
+
+  const project = teamspace.projects.find(
+    p => p.name === decodeURIComponent(route.params.projectName)
+  );
+  if (!project) return null;
+
+  const foundList = project.lists.find(
+    l => l.name === decodeURIComponent(route.params.listName)
+  );
   
-  // First try to get the list from the navigation store context
-  if (navigationStore.activeList?.id.toString() === listId.toString()) {
-    return navigationStore.activeList
+  if (foundList) {
+    navigationStore.setTeamspace(teamspace);
+    navigationStore.setProject(project);
+    navigationStore.setList(foundList);
   }
   
-  // If not found in navigation store, search through all teamspaces and projects
-  for (const teamspace of workspaceStore.teamspaces) {
-    for (const project of teamspace.projects) {
-      const foundList = project.lists.find(l => l.id.toString() === listId.toString())
-      if (foundList) {
-        // Update navigation store with the correct context
-        navigationStore.setTeamspace(teamspace)
-        navigationStore.setProject(project)
-        navigationStore.setList(foundList)
-        return foundList
-      }
-    }
-  }
-  return null
-})
+  return foundList;
+});
 
 // Watch for route changes to ensure list updates
 watch(
-  () => route.params.id,
-  (newId, oldId) => {
-    if (newId !== oldId) {
+  () => route.params.listName,
+  (newName, oldName) => {
+    if (newName !== oldName) {
       // Force recompute the list when route changes
-      list.value
+      list.value;
     }
   }
-)
+);
 
 const showNewTaskModal = () => {
   // Set the active list in the window object using the current list
-  window.activeList = list.value
-  window.activeProject = navigationStore.activeProject
-  window.activeTeamspace = navigationStore.activeTeamspace
+  window.activeList = list.value;
+  window.activeProject = navigationStore.activeProject;
+  window.activeTeamspace = navigationStore.activeTeamspace;
   
-  const modal = document.querySelector('#newTaskModal')
+  const modal = document.querySelector('#newTaskModal');
   if (modal) {
-    const modalInstance = new bootstrap.Modal(modal)
-    modalInstance.show()
+    const modalInstance = bootstrap.Modal.getOrCreateInstance(modal);
+    modalInstance.show();
   }
-}
+};
 
 const updateTaskStatus = (task, newStatus) => {
   if (task.status === newStatus) return;
@@ -179,43 +179,72 @@ const getStatusClass = (status) => {
 
 <style scoped>
 .list-view {
-  padding: 1rem;
+  height: calc(100vh - 96px); /* Subtract navbar + breadcrumb height */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent main content scrolling */
 }
 
 .tasks-container {
+  flex-grow: 1;
+  overflow-y: auto;
   border-radius: 8px;
+  margin-top: 1rem;
+  background: white;
+  min-height: 0;
+  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.tasks-container::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+.task-list {
+  padding-bottom: 1rem; /* Add padding at the bottom */
 }
 
 .task-row {
   display: grid;
   grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr;
   gap: 1rem;
-  padding: 0.875rem 1rem;
+  padding: 0.75rem 1rem;
   align-items: center;
+}
+
+.task-row:not(.header) {
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.task-list div.task-row:last-child {
+.task-row:last-child {
   border-bottom: none;
 }
 
+.task-row:not(.header):hover {
+  background-color: #f8f9fa;
+  cursor: pointer;
+}
+
 .task-row.header {
-  background-color: white;
   font-size: 0.75rem;
   color: #666;
   font-weight: 500;
+  background: white;
+  border-bottom: 1px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
-.task-name {
-  font-weight: 500;
-}
-
+.task-name,
 .task-assignee,
 .task-due-date,
 .task-priority,
 .task-status,
 .task-comments {
-  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .empty-state {

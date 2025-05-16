@@ -8,6 +8,7 @@ import InboxPage from '../views/InboxPage.vue'
 import TeamSpacePage from '../views/TeamSpacePage.vue'
 import ProjectPage from '../views/ProjectPage.vue'
 import EverythingPage from '../views/EverythingPage.vue'
+import CreateWorkspacePage from '../views/CreateWorkspacePage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -23,32 +24,9 @@ const router = createRouter({
       component: InboxPage
     },
     {
-      path: '/teamspace/:id',
-      name: 'teamspace',
-      component: TeamSpacePage,
-      props: true
-    },
-    {
-      path: '/project/:id',
-      name: 'project',
-      component: ProjectPage,
-      props: true
-    },
-    {
-      path: '/page2',
-      name: 'page2',
-      component: Page2,
-    },
-    {
-      path: '/page3',
-      name: 'page3',
-      component: Page3,
-    },
-    {
-      path: '/list/:id',
-      name: 'list',
-      component: ListView,
-      props: true,
+      path: '/everything',
+      name: 'everything',
+      component: EverythingPage
     },
     {
       path: '/auth',
@@ -59,9 +37,9 @@ const router = createRouter({
       component: Auth
     },
     {
-      path: '/everything',
-      name: 'everything',
-      component: EverythingPage
+      path: '/create-workspace',
+      name: 'create-workspace',
+      component: CreateWorkspacePage
     },
     {
       path: '/forgot-password',
@@ -72,6 +50,21 @@ const router = createRouter({
       path: '/api/reset-password/:token',
       name: 'reset-password',
       component: Auth
+    },
+    {
+      path: '/:teamspaceName',
+      name: 'teamspace',
+      component: TeamSpacePage
+    },
+    {
+      path: '/:teamspaceName/:projectName',
+      name: 'project',
+      component: ProjectPage
+    },
+    {
+      path: '/:teamspaceName/:projectName/:listName',
+      name: 'list',
+      component: ListView
     }
   ]
 })
@@ -79,20 +72,29 @@ const router = createRouter({
 // Navigation guards
 router.beforeEach((to, from, next) => {
   const isAuthenticated = !!localStorage.getItem('authUser')
+  const hasWorkspace = !!localStorage.getItem('hasWorkspace')
   
-  // Skip auth check for auth page
-  if (to.name === 'auth') {
+  // Skip auth check for auth page and related pages
+  if (to.name === 'auth' || to.name === 'forgot-password' || to.name === 'reset-password') {
     next()
     return
   }
-  
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    // If route requires auth and user is not authenticated, redirect to auth page
+
+  // If not authenticated, redirect to auth
+  if (!isAuthenticated) {
     next({ name: 'auth' })
-  } else {
-    // Otherwise proceed as normal
-    next()
+    return
   }
+
+  // If authenticated but no workspace, force create-workspace
+  // unless they're already on the create-workspace page
+  if (!hasWorkspace && to.name !== 'create-workspace') {
+    next({ name: 'create-workspace' })
+    return
+  }
+
+  // Otherwise proceed as normal
+  next()
 })
 
 export default router 

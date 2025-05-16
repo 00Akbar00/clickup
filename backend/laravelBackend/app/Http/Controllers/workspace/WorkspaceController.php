@@ -49,7 +49,9 @@ class WorkspaceController extends Controller
 
             $avatarFileName = Str::uuid() . '.png';
             $avatarPath = "{$avatarDirectory}/{$avatarFileName}";
-            $avatar->save(storage_path("app/public/{$avatarPath}"));
+            // $avatar->save(storage_path("app/public/{$avatarPath}"));
+            Storage::disk('public')->put($avatarPath,  $avatar);
+
 
             // Create workspace with UUID
             $workspaceId = Str::uuid();

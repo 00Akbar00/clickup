@@ -1,18 +1,7 @@
-// models/Comment.js
+
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
-
-const fileSchema = new Schema({
-  filename: String,
-  originalname: String,
-  mimetype: String,
-  size: Number,
-  path: String,
-  uploadedAt: {
-    type: Date,
-    default: Date.now
-  }
-});
+const fileSchema = require('../Models/File'); 
 
 const commentSchema = new Schema({
   task_id: {
@@ -28,10 +17,6 @@ const commentSchema = new Schema({
     required: false
   },
   files: [fileSchema],
-  fromRedis: {  
-    type: Boolean,
-    default: false
-  },
   timestamp: {
     type: Date,
     default: Date.now

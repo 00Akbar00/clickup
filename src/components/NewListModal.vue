@@ -1,10 +1,10 @@
 <template>
-  <div class="modal fade" id="newListModal" ref="modalRef" tabindex="-1">
+  <div class="modal fade" id="newListModal" ref="modalRef" tabindex="-1" data-bs-backdrop="static" @keydown="handleKeydown">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-white shadow-sm border">
         <div class="modal-header py-3">
           <h5 class="modal-title">Create New List</h5>
-          <button type="button" class="btn-close" @click="hide"></button>
+          <button type="button" class="btn-close" @click="hide" aria-label="Close"></button>
         </div>
         <div class="modal-body py-4">
           <input
@@ -17,10 +17,9 @@
           >
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button 
             type="button" 
-            class="btn btn-primary" 
+            class="btn btn-primary w-100" 
             @click="createList"
             :disabled="!listName.trim()"
           >Create List</button>
@@ -34,51 +33,57 @@
 import { ref, onMounted } from 'vue'
 import { Modal } from 'bootstrap'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useNavigationStore } from '../stores/navigationStore'
 
 const workspaceStore = useWorkspaceStore()
-const modal = ref(null)
-const listName = ref('')
+const navigationStore = useNavigationStore()
 const modalRef = ref(null)
+const listName = ref('')
 const listInput = ref(null)
+let modalInstance = null
 
 onMounted(() => {
-  modal.value = new Modal(modalRef.value, {
-    backdrop: true
-  })
+  modalInstance = new Modal(modalRef.value)
 })
 
 const hide = () => {
-  modal.value?.hide()
+  modalInstance?.hide()
   listName.value = ''
 }
 
-const createList = () => {
-  if (listName.value.trim()) {
-    const teamspaceId = window.activeTeamspace?.id
-    const projectId = window.activeProject?.id
-    
-    if (!teamspaceId || !projectId) {
-      console.error('Missing teamspace or project reference')
-      return
-    }
-
-    const project = workspaceStore.getProject(teamspaceId, projectId)
-    if (!project) {
-      console.error('Project not found')
-      return
-    }
-
-    const newId = Math.max(0, ...project.lists.map(l => l.id), 0) + 1
-    
-    const newList = {
-      id: newId,
-      name: listName.value.trim(),
-      tasks: []
-    }
-    
-    workspaceStore.addList(teamspaceId, projectId, newList)
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
     hide()
   }
+}
+
+const createList = () => {
+  if (!listName.value.trim()) return
+
+  const teamspaceId = window.activeTeamspace?.id
+  const projectId = window.activeProject?.id
+  
+  if (!teamspaceId || !projectId) {
+    console.error('Missing teamspace or project reference')
+    return
+  }
+
+  const project = workspaceStore.getProject(teamspaceId, projectId)
+  if (!project) {
+    console.error('Project not found')
+    return
+  }
+
+  const newId = Math.max(0, ...project.lists.map(l => l.id), 0) + 1
+  
+  const newList = {
+    id: newId,
+    name: listName.value.trim(),
+    tasks: []
+  }
+  
+  workspaceStore.addList(teamspaceId, projectId, newList)
+  hide()
 }
 
 // Expose methods to parent components

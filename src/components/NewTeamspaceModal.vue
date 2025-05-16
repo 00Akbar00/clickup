@@ -1,10 +1,10 @@
 <template>
-  <div class="modal fade" id="newTeamspaceModal" ref="modalRef" tabindex="-1">
+  <div class="modal fade" id="newTeamspaceModal" ref="modalRef" tabindex="-1" data-bs-backdrop="static" @keydown="handleKeydown">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-white shadow-sm border">
         <div class="modal-header py-3">
           <h5 class="modal-title">Create New Teamspace</h5>
-          <button type="button" class="btn-close" @click="hide"></button>
+          <button type="button" class="btn-close" @click="hide" aria-label="Close"></button>
         </div>
         <div class="modal-body py-4">
           <div class="mb-3">
@@ -19,10 +19,9 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button 
             type="button" 
-            class="btn btn-primary" 
+            class="btn btn-primary w-100" 
             @click="createTeamspace"
             :disabled="!teamspaceName.trim()"
           >Create Teamspace</button>
@@ -38,35 +37,39 @@ import { Modal } from 'bootstrap'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 
 const workspaceStore = useWorkspaceStore()
-const modal = ref(null)
 const modalRef = ref(null)
 const teamspaceInput = ref(null)
 const teamspaceName = ref('')
+let modalInstance = null
 
 onMounted(() => {
-  modal.value = new Modal(modalRef.value, {
-    backdrop: true
-  })
+  modalInstance = new Modal(modalRef.value)
 })
 
 const hide = () => {
-  modal.value?.hide()
+  modalInstance?.hide()
   teamspaceName.value = ''
 }
 
-const createTeamspace = () => {
-  if (teamspaceName.value.trim()) {
-    const newId = Math.max(0, ...workspaceStore.teamspaces.map(t => t.id), 0) + 1
-    
-    const newTeamspace = {
-      id: newId,
-      name: teamspaceName.value.trim(),
-      projects: []
-    }
-    
-    workspaceStore.addTeamspace(newTeamspace)
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
     hide()
   }
+}
+
+const createTeamspace = () => {
+  if (!teamspaceName.value.trim()) return
+  
+  const newId = Math.max(0, ...workspaceStore.teamspaces.map(t => t.id), 0) + 1
+  
+  const newTeamspace = {
+    id: newId,
+    name: teamspaceName.value.trim(),
+    projects: []
+  }
+  
+  workspaceStore.addTeamspace(newTeamspace)
+  hide()
 }
 
 // Expose methods to parent components

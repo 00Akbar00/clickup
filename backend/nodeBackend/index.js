@@ -8,6 +8,7 @@ const connectDB = require('./config/db');
 const RedisSubscriber = require('./redis/redis-sub');
 const ChangeStreamService = require('./Services/changeStream');
 const commentRoutes = require('./Routes/commentRoutes');
+require('./redis/redis-pub')
 
 class Server {
   constructor() {
@@ -52,6 +53,7 @@ class Server {
   async setupRedis() {
     try {
       this.redisSubscriber = new RedisSubscriber(this.io);
+      // this.RedisPublisher = new RedisPublisher(this.io);
       await ChangeStreamService.watchComments();
     } catch (err) {
       console.error("❌ Failed to setup Redis:", err);

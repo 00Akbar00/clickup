@@ -12,7 +12,6 @@ use App\Http\Controllers\Teams\TeamController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
-use App\Providers\RouteServiceProvider;
 use App\Http\Controllers\Workspace\WorkspaceController;
 use App\Http\Controllers\Workspace\WorkspaceMemberController;
 use App\Http\Controllers\Workspace\WorkspaceInviteController;
@@ -53,7 +52,11 @@ Route::prefix('workspaces/{workspace_id}')->middleware(['auth:api'])->group(func
     Route::post('/invites/link', [WorkspaceInviteController::class, 'generateInviteLink']);
     Route::post('/invites/send', [WorkspaceInviteController::class, 'sendInvitations']);
     Route::delete('/invites', [WorkspaceInviteController::class, 'revokeInvite']);
-});
+}); 
+
+Route::get('/workspaces/{workspace}/join/{token}', [WorkspaceInviteController::class, 'acceptInvite'])
+    ->name('workspace.join');
+
 
 Route::prefix('invites')->group(function () {
     Route::get('/verify', [WorkspaceInviteController::class, 'verifyInvite']);

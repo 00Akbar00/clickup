@@ -1,7 +1,7 @@
 <?php
 
 
-namespace App\Services;
+namespace App\Services\AuthService;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -13,6 +13,7 @@ class AvatarService
 {
     public function generate(Request $request): ?string
     {
+        
         if ($request->hasFile('profile_picture_url')) {
             $file = $request->file('profile_picture_url');
             $originalName = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
@@ -21,8 +22,9 @@ class AvatarService
 
             return $file->storeAs('avatars', $filename, 'public');
         } else {
-            $name = $request->input('fullName', 'User');
+            $name = $request->input('full_name', 'User');
             $avatarImage = Avatar::create($name)->getImageObject()->encode(new PngEncoder());
+            
             $filename = 'avatars/' . Str::slug($name) . '_' . Str::uuid() . '.png';
 
             Storage::disk('public')->put($filename, $avatarImage);

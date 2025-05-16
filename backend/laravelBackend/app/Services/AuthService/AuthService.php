@@ -1,8 +1,11 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\AuthService;
+
 
 use App\Models\User;
+use App\Services\AuthService\TokenService;
+use App\Services\AuthService\MailService;
 use Illuminate\Support\Facades\Hash;
 
 class AuthService

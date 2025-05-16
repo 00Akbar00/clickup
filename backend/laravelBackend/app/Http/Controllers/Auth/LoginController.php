@@ -7,7 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use App\Services\TokenService;
+use App\Services\AuthService\TokenService;
 
 
 class LoginController extends Controller

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\AuthService;
 
 use Carbon\Carbon;
 
@@ -22,7 +22,7 @@ class TokenService
         ];
     
         $issuedAt = Carbon::now()->timestamp;
-        $expirationTime = Carbon::now()->addHours(2)->timestamp;
+        $expirationTime = Carbon::now()->addHours(9)->timestamp;
     
         $payload = [
             'iat' => $issuedAt,

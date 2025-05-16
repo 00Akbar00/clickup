@@ -1,19 +1,21 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import * as bootstrap from 'bootstrap';
 import { Pie } from 'vue-chartjs';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
+import { useNavigationStore } from '../stores/navigationStore';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const route = useRoute();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
+const navigationStore = useNavigationStore();
 
 const teamspace = computed(() => {
-  return workspaceStore.teamspaces.find(t => t.id === parseInt(route.params.id));
+  return workspaceStore.teamspaces.find(t => t.name === decodeURIComponent(route.params.teamspaceName));
 });
 
 const projects = computed(() => {
@@ -21,7 +23,7 @@ const projects = computed(() => {
 });
 
 // Add state for expanded slabs
-const expandedSlab = ref(null); // 'recent' or 'projects'
+const expandedSlab = ref(null); // 'recent' or 'projects' or 'lists'
 
 const expandSlab = (type) => {
   expandedSlab.value = type;
@@ -91,8 +93,8 @@ const getItemIcon = (type) => {
   }
 };
 
-const navigateToProject = (projectId) => {
-  router.push(`/project/${projectId}`);
+const navigateToProject = (project) => {
+  router.push(`/${encodeURIComponent(teamspace.value.name)}/${encodeURIComponent(project.name)}`);
 };
 
 const navigateToItem = (item) => {
@@ -109,7 +111,7 @@ const showNewProjectModal = () => {
   window.activeTeamspace = teamspace.value;
   const modal = document.querySelector('#newProjectModal');
   if (modal) {
-    const modalInstance = new bootstrap.Modal(modal);
+    const modalInstance = bootstrap.Modal.getOrCreateInstance(modal);
     modalInstance.show();
   }
 };
@@ -179,9 +181,16 @@ const getListProgress = (list) => {
   return Math.round((completedTasks / list.tasks.length) * 100);
 };
 
-const navigateToList = (listId) => {
-  router.push(`/list/${listId}`);
+const navigateToList = (list, project) => {
+  router.push(`/${encodeURIComponent(teamspace.value.name)}/${encodeURIComponent(project.name)}/${encodeURIComponent(list.name)}`);
 };
+
+// Add a watcher to update navigation store when teamspace is found
+watch(teamspace, (newTeamspace) => {
+  if (newTeamspace) {
+    navigationStore.setTeamspace(newTeamspace);
+  }
+}, { immediate: true });
 </script>
 
 <template>
@@ -236,7 +245,7 @@ const navigateToList = (listId) => {
             <div v-for="project in teamspace.projects" 
                  :key="project.id" 
                  class="nav-item mb-1"
-                 @click="navigateToProject(project.id)">
+                 @click="navigateToProject(project)">
               <div class="nav-link d-flex align-items-center text-dark text-decoration-none py-1 px-2 rounded app-text">
                 <i class="bi bi-folder me-2 text-secondary"></i>
                 <div class="d-flex flex-column">
@@ -248,11 +257,8 @@ const navigateToList = (listId) => {
               </div>
             </div>
           </div>
-          <div v-else class="empty-state text-center py-4">
-            <p class="mb-0">No projects yet</p>
-            <button class="btn btn-primary btn-sm mt-2" @click="showNewProjectModal">
-              Create Project
-            </button>
+          <div v-else class="empty-state d-flex align-items-center justify-content-center h-100">
+            <p class="">No projects yet</p>
           </div>
         </div>
       </div>
@@ -263,7 +269,12 @@ const navigateToList = (listId) => {
       <!-- Lists Section -->
       <div class="lists-section">
         <div class="section-header">
-          <h6 class="mb-0">All Lists</h6>
+          <div class="d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">All Lists</h6>
+            <button class="btn btn-link text-dark p-0" @click="expandSlab('lists')">
+              <i class="bi bi-arrows-angle-expand"></i>
+            </button>
+          </div>
         </div>
         <div class="lists-container">
           <div v-if="allLists.length" class="lists-table">
@@ -278,7 +289,7 @@ const navigateToList = (listId) => {
             <div v-for="list in allLists" 
                  :key="list.id" 
                  class="list-row"
-                 @click="navigateToList(list.id)">
+                 @click="navigateToList(list, teamspace.projects.find(p => p.name === list.projectName))">
               <div class="list-name">
                 <i class="bi bi-list-ul me-2 text-secondary"></i>
                 {{ list.name }}
@@ -330,7 +341,11 @@ const navigateToList = (listId) => {
     <div v-if="expandedSlab" class="modal-backdrop" @click="closeSlab">
       <div class="modal-content" @click.stop>
         <div class="modal-header border-bottom">
-          <h6 class="mb-0">{{ expandedSlab === 'recent' ? 'Recent' : 'Projects' }}</h6>
+          <h6 class="mb-0">{{ 
+            expandedSlab === 'recent' ? 'Recent' : 
+            expandedSlab === 'projects' ? 'Projects' : 
+            'All Lists' 
+          }}</h6>
           <button class="btn btn-link text-dark p-0" @click="closeSlab">
             <i class="bi bi-x-lg"></i>
           </button>
@@ -346,7 +361,7 @@ const navigateToList = (listId) => {
               </div>
             </div>
           </template>
-          <template v-else>
+          <template v-else-if="expandedSlab === 'projects'">
             <div v-for="project in teamspace?.projects" 
                  :key="project.id" 
                  class="nav-item mb-1">
@@ -357,6 +372,47 @@ const navigateToList = (listId) => {
                   <small class="text-muted">
                     {{ project.lists?.length || 0 }} lists · {{ getTotalTasks(project) }} tasks
                   </small>
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-else>
+            <!-- Lists Table in Modal -->
+            <div class="lists-table">
+              <div class="list-row header">
+                <div class="list-name">List Name</div>
+                <div class="list-project">Project</div>
+                <div class="list-tasks">Tasks</div>
+                <div class="list-progress">Progress</div>
+              </div>
+              <div v-for="list in allLists" 
+                   :key="list.id" 
+                   class="list-row"
+                   @click="navigateToList(list, teamspace.projects.find(p => p.name === list.projectName))">
+                <div class="list-name">
+                  <i class="bi bi-list-ul me-2 text-secondary"></i>
+                  {{ list.name }}
+                </div>
+                <div class="list-project">
+                  <i class="bi bi-folder me-2 text-secondary"></i>
+                  {{ list.projectName }}
+                </div>
+                <div class="list-tasks">
+                  {{ list.tasks?.length || 0 }} tasks
+                </div>
+                <div class="list-progress">
+                  <div class="progress" style="height: 6px; width: 100px;">
+                    <div class="progress-bar bg-success" 
+                         role="progressbar" 
+                         :style="{ width: getListProgress(list) + '%' }" 
+                         :aria-valuenow="getListProgress(list)" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">
+                    </div>
+                  </div>
+                  <span class="progress-text ms-2">
+                    {{ getListProgress(list) }}%
+                  </span>
                 </div>
               </div>
             </div>
@@ -392,6 +448,8 @@ const navigateToList = (listId) => {
 .slab-header {
   padding: 0.5rem 1rem;
   flex-shrink: 0;
+  background: white;
+  border-bottom: 1px solid #dee2e6;
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
 }
@@ -431,7 +489,7 @@ const navigateToList = (listId) => {
 .modal-content {
   background: white;
   width: 95%;
-  height: 90vh;
+  height: 85vh;
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -493,6 +551,7 @@ const navigateToList = (listId) => {
 .lists-section,
 .stats-section {
   background: white;
+  height: 300px;
   border: 1px solid #dee2e6;
   border-radius: 8px;
   display: flex;
@@ -501,19 +560,25 @@ const navigateToList = (listId) => {
 
 .section-header {
   padding: 0.5rem 1rem;
+  background: white;
   border-bottom: 1px solid #dee2e6;
+  flex-shrink: 0;
 }
 
 .lists-container {
   padding: 0.5rem;
   overflow-y: auto;
-  max-height: 300px;
+  flex-grow: 1;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 
 .lists-container::-webkit-scrollbar {
   display: none;
+}
+
+.lists-table {
+  height: 100%;
 }
 
 .list-row {
@@ -526,19 +591,14 @@ const navigateToList = (listId) => {
   cursor: pointer;
 }
 
-.list-row:last-child {
-  border-bottom: none;
-}
-
-.list-row:hover:not(.header) {
-  background-color: #f8f9fa;
-}
-
 .list-row.header {
   font-size: 0.75rem;
   color: #666;
   font-weight: 500;
   cursor: default;
+  background: white;
+  border-bottom: 1px solid #dee2e6;
+  margin-bottom: 0.5rem;
 }
 
 .list-name {

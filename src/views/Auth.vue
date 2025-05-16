@@ -322,7 +322,7 @@ password_confirmation: confirmPassword.value
 
 localStorage.setItem('authUser', JSON.stringify(response.data.user || {}))
 
-router.push({ name: 'home' })
+router.push({ name: 'create-workspace' })
 
 } else {
 
@@ -345,7 +345,6 @@ router.push({ name: 'home' })
 alert(error.response?.data?.message || 'Authentication failed')
 
 console.error(error)
-
 }
 
 }

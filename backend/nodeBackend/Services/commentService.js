@@ -1,4 +1,4 @@
-// services/commentService.js
+
 const Comment = require('../Models/Comment');
 
 const createComment = async (commentData) => {

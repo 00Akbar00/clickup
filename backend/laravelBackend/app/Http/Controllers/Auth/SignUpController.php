@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Auth;
 use App\Http\Controllers\Controller;
 
 use App\Models\User;
-use App\Services\AvatarService;
+use App\Services\AuthService\AvatarService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Str;
@@ -36,7 +36,7 @@ class SignupController extends Controller
             'full_name' => $request->full_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'profile_picture_url' => $avatarPath,
+            'profile_picture_url' => asset('storage/' . $avatarPath),
         ]);
 
         return response()->json(['message' => 'User registered', 'user' => $user], 201);

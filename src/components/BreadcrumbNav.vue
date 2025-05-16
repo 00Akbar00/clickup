@@ -36,25 +36,33 @@
       </div>
     </template>
 
+    <!-- Everything page -->
+    <template v-else-if="route.name === 'everything'">
+      <div class="breadcrumb-item">
+        <i class="bi bi-grid-3x3-gap me-2"></i>
+        <span>Everything</span>
+      </div>
+    </template>
+
     <!-- Teamspace/Project/List pages -->
     <template v-else>
       <div class="breadcrumb-item" v-if="activeTeamspace">
         <i class="bi bi-building me-2"></i>
-        <router-link :to="{ name: 'teamspace', params: { id: activeTeamspace.id }}">
+        <router-link :to="`/${encodeURIComponent(activeTeamspace.name)}`">
           {{ activeTeamspace.name }}
         </router-link>
       </div>
 
       <div class="breadcrumb-item ms-3" v-if="activeProject">
         <i class="bi bi-folder me-2"></i>
-        <router-link :to="{ name: 'project', params: { id: activeProject.id }}">
+        <router-link :to="`/${encodeURIComponent(activeTeamspace.name)}/${encodeURIComponent(activeProject.name)}`">
           {{ activeProject.name }}
         </router-link>
       </div>
 
       <div class="breadcrumb-item ms-3" v-if="activeList">
         <i class="bi bi-list-ul me-2"></i>
-        <router-link :to="{ name: 'list', params: { id: activeList.id }}">
+        <router-link :to="`/${encodeURIComponent(activeTeamspace.name)}/${encodeURIComponent(activeProject.name)}/${encodeURIComponent(activeList.name)}`">
           {{ activeList.name }}
         </router-link>
       </div>
@@ -63,16 +71,19 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { ref, onMounted, computed, onUnmounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useNavigationStore } from '../stores/navigationStore'
 import { useInboxStore } from '../stores/inboxStore'
 import { useSidebarStore } from '../stores/sidebarStore'
+import { useWorkspaceStore } from '../stores/workspaceStore'
 
 const route = useRoute()
+const router = useRouter()
 const navigationStore = useNavigationStore()
 const inboxStore = useInboxStore()
 const sidebarStore = useSidebarStore()
+const workspaceStore = useWorkspaceStore()
 
 const showToggle = computed(() => sidebarStore.isCollapsed)
 
@@ -123,19 +134,50 @@ const handleTabChange = (tab) => {
   inboxStore.setActiveTab(tab.id)
 }
 
-const handleItemClick = (item) => {
-  switch (item.type) {
-    case 'teamspace':
-      navigationStore.setTeamspace(item)
-      break
-    case 'project':
-      navigationStore.setProject(item)
-      break
-    case 'list':
-      navigationStore.setList(item)
-      break
-  }
-}
+// Watch for route changes to update navigation context
+watch(
+  () => route.path,
+  async (newPath) => {
+    // Reset navigation if going to home or inbox
+    if (newPath === '/' || newPath === '/inbox' || newPath === '/everything') {
+      navigationStore.clearActiveItems();
+      return;
+    }
+
+    const routeName = route.name;
+    const teamspaceName = route.params.teamspaceName;
+    const projectName = route.params.projectName;
+    const listName = route.params.listName;
+
+    if (teamspaceName) {
+      const teamspace = workspaceStore.teamspaces.find(
+        t => t.name === decodeURIComponent(teamspaceName)
+      );
+      if (teamspace) {
+        navigationStore.setTeamspace(teamspace);
+
+        if (projectName) {
+          const project = teamspace.projects.find(
+            p => p.name === decodeURIComponent(projectName)
+          );
+          if (project) {
+            navigationStore.setProject(project);
+
+            if (listName) {
+              const list = project.lists.find(
+                l => l.name === decodeURIComponent(listName)
+              );
+              if (list) {
+                navigationStore.setList(list);
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>

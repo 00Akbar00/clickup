@@ -3,17 +3,28 @@ import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkspaceStore } from '../stores/workspaceStore';
 import * as bootstrap from 'bootstrap';
+import { useNavigationStore } from '../stores/navigationStore';
 
 const route = useRoute();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
+const navigationStore = useNavigationStore();
 
 const project = computed(() => {
-  let foundProject = null;
-  workspaceStore.teamspaces.some(teamspace => {
-    foundProject = teamspace.projects.find(p => p.id === parseInt(route.params.id));
-    return foundProject;
-  });
+  const teamspace = workspaceStore.teamspaces.find(
+    t => t.name === decodeURIComponent(route.params.teamspaceName)
+  );
+  if (!teamspace) return null;
+  
+  const foundProject = teamspace.projects.find(
+    p => p.name === decodeURIComponent(route.params.projectName)
+  );
+  
+  if (foundProject) {
+    navigationStore.setTeamspace(teamspace);
+    navigationStore.setProject(foundProject);
+  }
+  
   return foundProject;
 });
 
@@ -32,13 +43,22 @@ const getTaskCount = (list) => {
 };
 
 const handleListClick = (listId) => {
-  router.push(`/list/${listId}`);
+  const list = lists.value.find(l => l.id === listId);
+  if (!list) return;
+  
+  router.push(`/${encodeURIComponent(route.params.teamspaceName)}/${encodeURIComponent(route.params.projectName)}/${encodeURIComponent(list.name)}`);
 };
 
 const showNewListModal = () => {
+  // Set the window variables for the modal
+  window.activeProject = project.value;
+  window.activeTeamspace = workspaceStore.teamspaces.find(
+    t => t.name === decodeURIComponent(route.params.teamspaceName)
+  );
+
   const modal = document.querySelector('#newListModal');
   if (modal) {
-    const modalInstance = new bootstrap.Modal(modal);
+    const modalInstance = bootstrap.Modal.getOrCreateInstance(modal);
     modalInstance.show();
   }
 };
@@ -110,31 +130,61 @@ const showNewListModal = () => {
 
 <style scoped>
 .list-view {
-  padding: 1rem;
+  height: calc(100vh - 96px); /* Subtract navbar + breadcrumb height */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* Prevent main content scrolling */
 }
 
 .lists-container {
+  flex-grow: 1;
+  overflow-y: auto;
   border-radius: 8px;
+  margin-top: 1rem;
+  background: white;
+  min-height: 0;
+  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+}
+
+.lists-container::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+.list-list {
+  padding-bottom: 2rem; /* Add padding at the bottom */
 }
 
 .list-row {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 2fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
   gap: 1rem;
-  padding: 0.875rem 1rem;
+  padding: 0.75rem 1rem;
   align-items: center;
+}
+
+.list-row:not(.header) {
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-.list-list div.list-row:last-child {
+.list-row:last-child {
   border-bottom: none;
 }
 
+.list-row:not(.header):hover {
+  background-color: #f8f9fa;
+  cursor: pointer;
+}
+
 .list-row.header {
-  background-color: white;
   font-size: 0.75rem;
   color: #666;
   font-weight: 500;
+  background: white;
+  border-bottom: 1px solid #dee2e6;
+  position: sticky;
+  top: 0;
+  z-index: 1;
 }
 
 .list-name {
@@ -169,7 +219,7 @@ const showNewListModal = () => {
 }
 
 .task-count {
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: #666;
   margin-left: 0.5rem;
 }

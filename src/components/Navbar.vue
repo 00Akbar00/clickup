@@ -31,38 +31,158 @@
           <button 
             class="btn btn-link text-white p-1 dropdown-toggle d-flex align-items-center gap-2" 
             type="button" 
-            data-bs-toggle="dropdown" 
+            id="userDropdown"
             aria-expanded="false"
             style="text-decoration: none;"
+            ref="dropdownButton"
+            @click="toggleDropdown"
           >
-            <i class="bi bi-person-circle"></i>
+            <div class="d-flex align-items-center">
+              <img
+                v-if="profilePictureUrl"
+                :src="profilePictureUrl"
+                alt="Profile"
+                class="rounded-circle"
+                style="width: 28px; height: 28px; object-fit: cover"
+              />
+              <div
+                v-else
+                class="rounded-circle bg-white d-flex align-items-center justify-content-center"
+                style="width: 28px; height: 28px;"
+              >
+                <i class="bi bi-person text-primary" style="font-size: 1rem;"></i>
+              </div>
+              <span class="ms-2 d-none d-md-inline">{{ userName }}</span>
+            </div>
           </button>
-          <ul class="dropdown-menu dropdown-menu-end">
-            <li><a class="dropdown-item" href="#">hehe</a></li>
-            <li><a class="dropdown-item" href="#">haha</a></li>
+          <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+            <li>
+              <div class="dropdown-header">
+                <div class="d-flex align-items-center gap-2">
+                  <img
+                    v-if="profilePictureUrl"
+                    :src="profilePictureUrl"
+                    alt="Profile"
+                    class="rounded-circle"
+                    style="width: 32px; height: 32px; object-fit: cover"
+                  />
+                  <div
+                    v-else
+                    class="rounded-circle bg-secondary d-flex align-items-center justify-content-center"
+                    style="width: 32px; height: 32px;"
+                  >
+                    <i class="bi bi-person text-white"></i>
+                  </div>
+                  <div>
+                    <div class="fw-semibold">{{ userName }}</div>
+                    <div class="text-muted small">{{ userEmail }}</div>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="#" @click="handleProfile"><i class="bi bi-person me-2"></i>Profile</a></li>
+            <li><a class="dropdown-item" href="#" @click="handleSettings"><i class="bi bi-gear me-2"></i>Settings</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item text-danger" href="#" @click="handleLogout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
           </ul>
         </div>
       </div>
     </div>
   </nav>
+
+  <!-- Profile Drawer -->
+  <ProfileDrawer 
+    :is-open="isProfileDrawerOpen"
+    @close="closeProfileDrawer"
+  />
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import { Dropdown } from 'bootstrap'
+import 'bootstrap/dist/css/bootstrap.min.css'
+import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import ProfileDrawer from './ProfileDrawer.vue'
+
+const router = useRouter()
+const dropdownButton = ref(null)
+let dropdownInstance = null
+const isProfileDrawerOpen = ref(false)
 
 // State
 const searchQuery = ref('')
+const userName = computed(() => {
+  const userData = localStorage.getItem('authUser')
+  if (userData) {
+    const user = JSON.parse(userData)
+    return user.full_name || 'User'
+  }
+  return 'User'
+})
+
+const userEmail = computed(() => {
+  const userData = localStorage.getItem('authUser')
+  if (userData) {
+    const user = JSON.parse(userData)
+    return user.email || ''
+  }
+  return ''
+})
+
+const profilePictureUrl = computed(() => {
+  const userData = localStorage.getItem('authUser')
+  if (userData) {
+    const user = JSON.parse(userData)
+    return user.profile_picture_url || null
+  }
+  return null
+})
 
 // Methods
 const handleSearch = () => {
   // TODO: Implement search functionality
   console.log('Searching for:', searchQuery.value)
 }
+
+const handleProfile = () => {
+  if (dropdownInstance) {
+    dropdownInstance.hide()
+  }
+  isProfileDrawerOpen.value = true
+}
+
+const closeProfileDrawer = () => {
+  isProfileDrawerOpen.value = false
+}
+
+const handleSettings = () => {
+  router.push('/settings')
+}
+
+const handleLogout = () => {
+  localStorage.removeItem('authUser')
+  router.push('/auth')
+}
+
+const toggleDropdown = () => {
+  if (dropdownInstance) {
+    dropdownInstance.toggle()
+  }
+}
+
+onMounted(() => {
+  // Initialize Bootstrap dropdown
+  if (dropdownButton.value) {
+    dropdownInstance = new Dropdown(dropdownButton.value)
+  }
+})
 </script>
 
 <style scoped>
 .navbar {
-  height: 42px;
+  height: 48px;
   z-index: 1030;
 }
 
@@ -116,5 +236,28 @@ const handleSearch = () => {
 
 .bi-search {
   font-size: 0.875rem;
+}
+
+.dropdown-menu {
+  margin-top: 0.5rem;
+  min-width: 240px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.dropdown-header {
+  padding: 0.75rem 1rem;
+}
+
+.dropdown-item {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+}
+
+.dropdown-item i {
+  font-size: 1rem;
+}
+
+.dropdown-divider {
+  margin: 0.5rem 0;
 }
 </style> 

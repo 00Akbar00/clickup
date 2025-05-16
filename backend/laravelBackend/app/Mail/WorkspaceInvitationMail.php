@@ -7,7 +7,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Carbon\Carbon;
 
-class WorkspaceInvitation extends Mailable
+class WorkspaceInvitationMail extends Mailable
 {
     use Queueable, SerializesModels;
 

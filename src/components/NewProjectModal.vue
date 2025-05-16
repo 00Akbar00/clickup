@@ -1,10 +1,10 @@
 <template>
-  <div class="modal fade" id="newProjectModal" ref="modalRef" tabindex="-1">
+  <div class="modal fade" id="newProjectModal" ref="modalRef" tabindex="-1" data-bs-backdrop="static" @keydown="handleKeydown">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-white shadow-sm border">
         <div class="modal-header py-3">
           <h5 class="modal-title">Create New Project</h5>
-          <button type="button" class="btn-close" @click="hide"></button>
+          <button type="button" class="btn-close" @click="hide" aria-label="Close"></button>
         </div>
         <div class="modal-body py-4">
           <input
@@ -17,10 +17,9 @@
           >
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
           <button 
             type="button" 
-            class="btn btn-primary" 
+            class="btn btn-primary w-100" 
             @click="createProject"
             :disabled="!projectName.trim()"
           >Create Project</button>
@@ -36,19 +35,18 @@ import { Modal } from 'bootstrap'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 
 const workspaceStore = useWorkspaceStore()
-const modal = ref(null)
-const projectName = ref('')
 const modalRef = ref(null)
+const projectName = ref('')
 const projectInput = ref(null)
+let modalInstance = null
 
 onMounted(() => {
-  modal.value = new Modal(modalRef.value, {
-    backdrop: true
-  })
+  // Initialize modal instance
+  modalInstance = new Modal(modalRef.value)
 })
 
 const hide = () => {
-  modal.value?.hide()
+  modalInstance?.hide()
   projectName.value = ''
 }
 
@@ -65,10 +63,17 @@ const createProject = () => {
     const teamspaceId = window.activeTeamspace?.id
     if (teamspaceId) {
       workspaceStore.addProject(teamspaceId, newProject)
-      hide()
+      modalInstance?.hide()
+      projectName.value = ''
     } else {
       console.error('No active teamspace found')
     }
+  }
+}
+
+const handleKeydown = (event) => {
+  if (event.key === 'Escape') {
+    hide()
   }
 }
 

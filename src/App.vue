@@ -6,6 +6,7 @@ import NewProjectModal from './components/NewProjectModal.vue'
 import NewListModal from './components/NewListModal.vue'
 import NewTaskModal from './components/NewTaskModal.vue'
 import NewTeamspaceModal from './components/NewTeamspaceModal.vue'
+import NewWorkspaceModal from './components/NewWorkspaceModal.vue'
 import InviteMembersModal from './components/InviteMembersModal.vue'
 import { useRoute } from 'vue-router'
 import { ref, onMounted, onUnmounted, computed } from 'vue'
@@ -37,8 +38,8 @@ const mainContentStyle = computed(() => ({
 </script>
 
 <template>
-  <div class="app-container" :class="{ 'auth-page': route.name === 'auth' || route.name === 'forgot-password' || route.name === 'reset-password'   }">
-    <template v-if="route.name !== 'auth' && route.name !== 'forgot-password' && route.name !== 'reset-password'">
+  <div class="app-container" :class="{ 'auth-page': route.name === 'auth' || route.name === 'forgot-password' || route.name === 'reset-password' || route.name === 'create-workspace' }">
+    <template v-if="route.name !== 'auth' && route.name !== 'forgot-password' && route.name !== 'reset-password' && route.name !== 'create-workspace'">
       <Navbar />
       <Sidebar />
       <main :style="mainContentStyle">
@@ -52,6 +53,7 @@ const mainContentStyle = computed(() => ({
       <NewListModal ref="newListModal" />
       <NewTaskModal />
       <NewTeamspaceModal />
+      <NewWorkspaceModal />
       <InviteMembersModal />
     </template>
     <template v-else>
