@@ -15,6 +15,7 @@ use App\Http\Controllers\UserController;
 use App\Providers\RouteServiceProvider;
 use App\Http\Controllers\Workspace\WorkspaceController;
 use App\Http\Controllers\Workspace\WorkspaceMemberController;
+use App\Http\Controllers\Workspace\WorkspaceInviteController;
 
 
 Route::middleware(['throttle:signup-limiter'])->group(function () {
@@ -48,6 +49,15 @@ Route::prefix('workspaces/{workspace_id}')->middleware(['auth:api'])->group(func
     Route::put('/members/{member_id}/role', [WorkspaceMemberController::class, 'updateMemberRole']);
     Route::delete('/members/{member_id}', [WorkspaceMemberController::class, 'removeMember']);
     Route::delete('/leave', [WorkspaceMemberController::class, 'leaveWorkspace']);
+    // invite link
+    Route::post('/invites/link', [WorkspaceInviteController::class, 'generateInviteLink']);
+    Route::post('/invites/send', [WorkspaceInviteController::class, 'sendInvitations']);
+    Route::delete('/invites', [WorkspaceInviteController::class, 'revokeInvite']);
+});
+
+Route::prefix('invites')->group(function () {
+    Route::get('/verify', [WorkspaceInviteController::class, 'verifyInvite']);
+    Route::post('/join', [WorkspaceInviteController::class, 'joinWorkspace'])->middleware('auth:api');
 });
 
 Route::prefix('teams')->middleware(['auth:api'])->group(function () {

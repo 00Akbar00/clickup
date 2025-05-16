@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
+use Carbon\Carbon;
 
 class Workspace extends Model
 {
@@ -45,4 +47,19 @@ class Workspace extends Model
     {
         return $this->hasMany(Team::class, 'workspace_id');
     }
+
+    public function isInviteValid()
+{
+    return $this->invite_token && 
+           Carbon::parse($this->invite_token_expires_at)->isFuture();
+}
+
+public function refreshInviteToken()
+{
+    $this->update([
+        'invite_token' => Str::uuid(),
+        'invite_token_expires_at' => Carbon::now()->addDays(7)
+    ]);
+    return $this;
+}
 }
