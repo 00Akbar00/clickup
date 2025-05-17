@@ -17,6 +17,8 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('status')->default('active'); // active | archived
+            $table->integer('position')->nullable(); // or not nullable, depending
+
 
             $table->timestamps();
 
