@@ -20,6 +20,7 @@ const notificationSchema = new Schema({
     required: true,
     enum: [
       "task_assigned",
+      "team_member_added",
       "task_unassigned",
       "status_changed",
       "due_date_approaching",

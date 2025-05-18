@@ -13,6 +13,15 @@ class EventServiceProvider extends ServiceProvider
         \App\Events\CommentCreated::class => [
             \App\Listeners\PublishCommentToNodeServer::class,
         ],
+        \App\Events\TaskAssigned::class => [
+            \App\Listeners\SendTaskAssignmentNotification::class,
+        ],
+        \App\Events\TaskUnassigned::class => [
+            \App\Listeners\SendTaskUnassignmentNotification::class,
+        ],
+        \App\Events\TeamMemberAdded::class => [
+            \App\Listeners\SendTeamMemberAddedNotification::class,
+        ],
     ];
     
     public function register(): void
