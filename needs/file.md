@@ -1,6 +1,9 @@
 Google Link
 https://docs.google.com/document/d/1BFduQy4cMzJJNzLIbUNadcP5piajizxeW8BvTXbDLjU/edit?usp=sharing
 
+Documemtation
+https://docs.google.com/document/d/1_KrDFDS6y_od-PhcU2X2gYV8HxnKetgRSo5SLZaNr9o/edit?usp=sharing
+
 DATABASE SCHEMA UPDATED
 
 Table users {
