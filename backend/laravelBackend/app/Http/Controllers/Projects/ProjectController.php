@@ -62,18 +62,13 @@ class ProjectController extends Controller
         }
     }
 
-    public function updateProject(Request $request, $project_id)
+    public function updateProject(CreateProjectRequest $request, $project_id)
     {
         try {
 
-            $validated = $request->validate([
-                'name' => ValidationService::nameRules(),
-                'description' => ValidationService::descriptionRules(),
-                'visibility' => 'in:public,private',
-                'color_code' => 'nullable|string|max:7',
-            ]);
+            $validator = $request->validated();
 
-            $project = $this->projectService->updateProject($validated, $project_id);
+            $project = $this->projectService->updateProject($validator, $project_id);
 
             return response()->json([
                 'message' => 'Project updated successfully',

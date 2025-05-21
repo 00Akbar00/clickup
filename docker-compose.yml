@@ -6,7 +6,7 @@ services:
     volumes:
       - ./backend/laravelBackend:/var/www/html
     ports:
-      - "5000:9000"
+      - "2000:9000"
     depends_on:
       - pgsql
     networks:

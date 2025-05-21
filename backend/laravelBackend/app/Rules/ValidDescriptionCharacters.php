@@ -12,8 +12,9 @@ class ValidDescriptionCharacters implements ValidationRule
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        if (preg_match('/[<>@#$%^&*{}\[\]|\\\\\/]/', $value)) {
-            $fail('The ' . $attribute . ' contains invalid characters.');
+        if (preg_match('/[<>@#$%^&*{}\[\]|\'\\\\\/]/', $value)) {
+            $fail('The ' . $attribute . ' contains invalid characters: < > @ # $ % ^ & * { } [ ] | \' \\ /');
         }
     }
+
 }

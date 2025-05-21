@@ -10,6 +10,7 @@ use App\Services\VerifyValidationService\ValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Str;
 
 
@@ -26,16 +27,36 @@ class SignupController extends Controller
     {
         // Get input and trim full_name ONLY
         $input = $request->all();
-        // $input['full_name'] = isset($input['full_name']) ? trim($input['full_name']) : null;
 
-        $request->validate([
-            'full_name' => ValidationService::nameRules(),
-            'email' => ValidationService::emailSignupRules(),
-            'password' => ValidationService::passwordRules(true),
-        ]);
+        // Get individual rule/message sets
+        $nameRules = ValidationService::nameRules();
+        $emailValidation = ValidationService::emailSignupRules();
+        $passwordValidation = ValidationService::passwordRules(true);
 
-        $avatarPath = $this->avatarService->generate($request);
+        // Combine all rules (removed avatar rules since they're now in AvatarService)
+        $rules = [
+            'full_name' => $nameRules,
+            'email' => $emailValidation['rules'],
+            'password' => $passwordValidation['rules'],
+        ];
 
+        // Combine all messages
+        $messages = array_merge(
+            $emailValidation['messages'],
+            $passwordValidation['messages']
+        );
+
+        // Validate the request (excluding avatar validation)
+        $request->validate($rules, $messages);
+
+        try {
+            $avatarPath = $this->avatarService->generate($request);
+        } catch (ValidationException $e) {
+            return response()->json([
+                'message' => 'Avatar validation failed',
+                'errors' => $e->errors()
+            ], 422);
+        }
 
         $user = User::create([
             'user_id' => (string) Str::uuid(),

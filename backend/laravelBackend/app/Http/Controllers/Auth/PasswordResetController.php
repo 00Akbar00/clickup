@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 
 use App\Models\User;
 use App\Services\AuthService\PasswordResetService;
+use App\Services\VerifyValidationService\ValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -21,16 +22,12 @@ class PasswordResetController extends Controller
     //Forget Password
     public function forgotPassword(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
-        ]);
+        $validation = ValidationService::emailLoginRules();
 
-        if ($validator->fails()) {
-            return response()->json([
-                'errors' => $validator->errors(),
-                'message' => 'Validation failed.'
-            ], 422);
-        }
+        $request->validate(
+            $validation['rules'],     
+            $validation['messages']   
+        );
 
         $user = User::where('email', $request->email)->first();
 
@@ -50,7 +47,6 @@ class PasswordResetController extends Controller
         $user->reset_token_expires_at = $expiry;
         $user->save();
 
-        // \Log::info("Generated reset token for user {$user->id}, expires at: {$expiry}");
 
         // Send reset email via service
         $resetURL = $this->passwordResetService->sendResetLink($user);
@@ -64,26 +60,11 @@ class PasswordResetController extends Controller
     //Reset Password
     public function resetPassword(Request $request, $token)
     {
-        $validator = Validator::make($request->all(), [
-            'password' => [
-                'required',
-                'string',
-                'min:8',
-                'max:20',
-                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/'
-            ],
-            [
-                'password.min' => 'Password must be at least 8 characters.',
-                'password.regex' => 'Password must include uppercase, lowercase, number, and special character.',
-            ]
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'errors' => $validator->errors(),
-                'message' => 'Validation failed.'
-            ], 422);
-        }
+        $validation = ValidationService::passwordRules();
+        $request->validate(
+            $validation['rules'],     
+            $validation['messages']   
+        );
 
         $user = User::where('reset_token', $token)->first();
 
@@ -112,15 +93,5 @@ class PasswordResetController extends Controller
 
         return view('email.show-reset-password', ['token' => $token]);
     }
-    // public function showResetPasswordForm($token)
-    // {
-    //     $user = User::where('reset_token', $token)->first();
-
-    //     if (!$user || !$user->reset_token_expires_at || $user->reset_token_expires_at->isPast()) {
-    //         return redirect()->back()->with('error', 'This password reset link is invalid or has expired.');
-    //     }
-
-    //     return view('email.show-reset-password', ['token' => $token]);
-    // }
 
 }
