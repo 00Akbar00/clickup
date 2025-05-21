@@ -1,63 +1,99 @@
 <template>
-  <div class="modal fade" id="newTaskModal" ref="modalRef" tabindex="-1" data-bs-backdrop="static" @keydown="handleKeydown">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-white shadow-sm border">
-        <div class="modal-header py-3">
-          <h5 class="modal-title">Create New Task</h5>
-          <button type="button" class="btn-close" @click="hide" aria-label="Close"></button>
+  <div v-if="showModal" class="modal-backdrop fade show"></div>
+  <div v-if="showModal" class="modal fade show d-block" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add New Task</h5>
+          <button type="button" class="btn-close" aria-label="Close" @click="hide"></button>
         </div>
-        <div class="modal-body py-4">
-          <div class="mb-3">
-            <label class="form-label">Task Name</label>
-            <input
-              type="text"
-              class="form-control"
-              v-model="taskName"
-              placeholder="Enter task name"
-              ref="taskInput"
-            >
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Assigned To</label>
-            <input
-              type="text"
-              class="form-control"
-              v-model="assignedTo"
-              placeholder="Enter assignee name"
-            >
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Due Date</label>
-            <input
-              type="date"
-              class="form-control"
-              v-model="dueDate"
-            >
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Priority</label>
-            <select class="form-select" v-model="priority">
-              <option value="high">High</option>
-              <option value="normal">Normal</option>
-              <option value="low">Low</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="form-label">Status</label>
-            <select class="form-select" v-model="status">
-              <option value="todo">To Do</option>
-              <option value="in progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-          </div>
+        <div class="modal-body">
+          <form @submit.prevent="createTask">
+            <!-- Task Name -->
+            <div class="mb-3">
+              <label for="taskName" class="form-label">Task Name</label>
+              <input 
+                type="text" 
+                class="form-control" 
+                id="taskName" 
+                v-model="taskName" 
+                placeholder="Enter task name"
+                required
+                ref="taskNameInput"
+              >
+            </div>
+
+            <!-- Description -->
+            <div class="mb-3">
+              <label for="taskDescription" class="form-label">Description</label>
+              <textarea 
+                class="form-control" 
+                id="taskDescription" 
+                v-model="taskDescription" 
+                placeholder="Enter task description (optional)"
+                rows="3"
+              ></textarea>
+            </div>
+
+            <!-- Assignee -->
+            <div class="mb-3">
+              <label for="taskAssignee" class="form-label">Assignee</label>
+              <select class="form-select" id="taskAssignee" v-model="assigneeId">
+                <option value="">Unassigned</option>
+                <option v-for="user in userList" :key="user.id" :value="user.id">
+                  {{ user.name }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Due Date -->
+            <div class="mb-3">
+              <label for="taskDueDate" class="form-label">Due Date</label>
+              <input 
+                type="date" 
+                class="form-control" 
+                id="taskDueDate" 
+                v-model="taskDueDate"
+              >
+              <small class="form-text text-muted">Will be formatted as DD/MM/YY</small>
+            </div>
+
+            <!-- Priority -->
+            <div class="mb-3">
+              <label for="taskPriority" class="form-label">Priority</label>
+              <select class="form-select" id="taskPriority" v-model="taskPriority">
+                <option value="low">Low</option>
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+
+            <!-- Status -->
+            <div class="mb-3">
+              <label for="taskStatus" class="form-label">Status</label>
+              <select class="form-select" id="taskStatus" v-model="taskStatus">
+                <option value="todo">To Do</option>
+                <option value="in progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+
+            <!-- Error Message -->
+            <div v-if="errorMessage" class="alert alert-danger" role="alert">
+              {{ errorMessage }}
+            </div>
+          </form>
         </div>
         <div class="modal-footer">
           <button 
             type="button" 
-            class="btn btn-primary w-100" 
+            class="btn btn-primary" 
             @click="createTask"
-            :disabled="!taskName.trim()"
-          >Create Task</button>
+            :disabled="!taskName || isLoading"
+          >
+            <span v-if="isLoading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            {{ isLoading ? 'Creating...' : 'Create Task' }}
+          </button>
         </div>
       </div>
     </div>
@@ -66,133 +102,165 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Modal } from 'bootstrap'
 import { useWorkspaceStore } from '../stores/workspaceStore'
-import { useNavigationStore } from '../stores/navigationStore'
+import { useTaskStore } from '../stores/taskStore'
+import { useToast } from '../composables/useToast'
 
 const workspaceStore = useWorkspaceStore()
-const navigationStore = useNavigationStore()
-const modalRef = ref(null)
-const taskInput = ref(null)
-let modalInstance = null
+const taskStore = useTaskStore()
+const toast = useToast()
 
-// Form fields
+// Reactive state
+const showModal = ref(false)
 const taskName = ref('')
-const assignedTo = ref('')
-const dueDate = ref('')
-const priority = ref('normal')
-const status = ref('todo')
+const taskDescription = ref('')
+const taskDueDate = ref('')
+const taskPriority = ref('normal')
+const taskStatus = ref('todo')
+const isLoading = ref(false)
+const errorMessage = ref('')
+const taskNameInput = ref(null)
+const assigneeId = ref('')
 
-onMounted(() => {
-  modalInstance = new Modal(modalRef.value)
-})
+// User list - hardcoded for now, typically this would come from an API
+const userList = ref([
+  { id: '1', name: 'John Doe' },
+  { id: '2', name: 'Jane Smith' },
+  { id: '3', name: 'Mike Johnson' }
+])
 
+// Method to show the modal
+const show = () => {
+  showModal.value = true
+  resetForm()
+  
+  // Focus the name input after the modal is shown
+  setTimeout(() => {
+    if (taskNameInput.value) {
+      taskNameInput.value.focus()
+    }
+  }, 100)
+}
+
+// Method to hide the modal
 const hide = () => {
-  modalInstance?.hide()
+  showModal.value = false
   resetForm()
 }
 
-const handleKeydown = (event) => {
-  if (event.key === 'Escape') {
-    hide()
-  }
-}
-
+// Reset the form
 const resetForm = () => {
   taskName.value = ''
-  assignedTo.value = ''
-  dueDate.value = ''
-  priority.value = 'normal'
-  status.value = 'todo'
+  taskDescription.value = ''
+  taskDueDate.value = ''
+  taskPriority.value = 'normal'
+  taskStatus.value = 'todo'
+  errorMessage.value = ''
+  assigneeId.value = ''
 }
 
-const createTask = () => {
-  if (!taskName.value.trim()) return
-
-  const teamspaceId = window.activeTeamspace?.id
-  const projectId = window.activeProject?.id
-  const listId = window.activeList?.id
-  
-  if (!teamspaceId || !projectId || !listId) {
-    console.error('Missing teamspace, project, or list reference')
+// Create a new task
+const createTask = async () => {
+  if (!taskName.value.trim()) {
+    errorMessage.value = 'Task name is required'
     return
   }
-
-  const list = workspaceStore.getList(teamspaceId, projectId, listId)
+  
+  // Get list information from the window object (set by ListView component)
+  const list = window.activeList
   if (!list) {
-    console.error('List not found')
+    errorMessage.value = 'No list selected'
+    toast.showToast('No list selected', 'danger')
     return
   }
-
-  const newId = Math.max(0, ...list.tasks.map(t => t.id), 0) + 1
   
-  const newTask = {
-    id: newId,
-    name: taskName.value.trim(),
-    assignee: assignedTo.value.trim(),
-    dueDate: dueDate.value,
-    priority: priority.value,
-    status: status.value
+  // Get the list ID
+  const listId = list.id || list._id || list.list_id
+  if (!listId) {
+    errorMessage.value = 'Invalid list ID'
+    toast.showToast('Invalid list ID', 'danger')
+    return
   }
   
-  workspaceStore.addTask(teamspaceId, projectId, listId, newTask)
-  hide()
+  try {
+    isLoading.value = true
+    errorMessage.value = ''
+    
+    // Format the due date if it exists (from YYYY-MM-DD to DD-MM-YYYY)
+    let formattedDueDate = null
+    if (taskDueDate.value) {
+      // Parse the date from input format (YYYY-MM-DD)
+      const dateParts = taskDueDate.value.split('-')
+      if (dateParts.length === 3) {
+        // Rearrange to DD-MM-YYYY format
+        formattedDueDate = `${dateParts[2]}-${dateParts[1]}-${dateParts[0]}`
+      } else {
+        formattedDueDate = taskDueDate.value // Keep original if parsing fails
+      }
+    }
+    
+    // Prepare assignee if selected
+    let assigneeData = null
+    if (assigneeId.value) {
+      const selectedUser = userList.value.find(u => u.id === assigneeId.value)
+      if (selectedUser) {
+        assigneeData = {
+          id: selectedUser.id,
+          name: selectedUser.name
+        }
+      }
+    }
+    
+    // Create a new task object
+    const task = {
+      name: taskName.value.trim(),
+      title: taskName.value.trim(), // API expects title instead of name
+      description: taskDescription.value.trim(),
+      due_date: formattedDueDate, // Formatted date for API
+      priority: taskPriority.value,
+      status: taskStatus.value,
+      assignee: assigneeData
+    }
+  
+    // Show loading toast
+    toast.showToast('Creating task...', 'info')
+    
+    // Call the API to create the task
+    const createdTask = await taskStore.createTask(listId, task)
+    
+    console.log('Task created successfully:', createdTask)
+    
+    // Show success toast
+    toast.showToast(`Task "${taskName.value}" created successfully`, 'success')
+    
+    // Dispatch custom event to notify listeners (like ListView) that a task was created
+    window.dispatchEvent(new CustomEvent('taskCreated', { detail: createdTask }))
+    
+    // Hide the modal
+    hide()
+    
+  } catch (error) {
+    console.error('Error creating task:', error)
+    errorMessage.value = error.message || 'Failed to create task'
+    toast.showToast(errorMessage.value, 'danger')
+  } finally {
+    isLoading.value = false
+  }
 }
 
-// Expose methods to parent components
+// Expose methods to the template
 defineExpose({
-  hide,
-  createTask
+  show,
+  hide
 })
 </script>
 
 <style scoped>
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
 .modal {
-  z-index: 2000 !important;
-}
-
-.modal-dialog {
-  max-width: 500px;
-}
-
-.modal-content {
-  border-radius: 8px;
-  box-shadow: 0 0.5rem 2rem rgba(0, 0, 0, 0.15) !important;
-}
-
-.modal-title {
-  font-size: var(--app-font-size-lg);
-}
-
-.form-control {
-  padding: 0.5rem 1rem;
-  font-size: var(--app-font-size-base);
-  border-radius: 6px;
-  border: 1.5px solid rgba(0, 0, 0, 0.1);
-  box-shadow: none;
-}
-
-.form-control:focus {
-  border-color: var(--app-primary-color);
-  box-shadow: 0 0 8px rgba(84, 62, 208, 0.25);
-}
-
-.form-label {
-  font-weight: 500;
-  color: #444;
-  font-size: var(--app-font-size-base);
-}
-
-.btn {
-  font-size: var(--app-font-size-base);
-  padding: 0.5rem 1rem;
-}
-
-.modal-header {
-  border-bottom: none;
-}
-
-.modal-footer {
-  border-color: rgba(0,0,0,.1);
+  display: block;
 }
 </style> 

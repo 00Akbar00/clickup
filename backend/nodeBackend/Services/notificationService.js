@@ -1,5 +1,5 @@
 // Services/notificationService.js
-const Notification = require('../Models/Notification');
+const Notification = require('../Models/Notifications');
 
 class NotificationService {
   static async createNotification(notificationData) {

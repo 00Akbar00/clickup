@@ -20,7 +20,7 @@ class SendTaskUnassignmentNotification
             'recipient_id' => $assignee->user_id,
             'sender_id' => $unassigner->user_id,
             'type' => 'task_unassigned',
-            'message' => "You've been unassigned from task '{$task->title}' by {$unassigner->name}",
+            'message' => "You've been unassigned from task '{$task->title}' by {$unassigner->full_name}",
             'related_entity' => [
                 'type' => 'task',
                 'id' => $task->task_id

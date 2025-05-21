@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 
 use App\Models\User;
 use App\Services\AuthService\AvatarService;
+use App\Services\VerifyValidationService\ValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
 use Str;
 
 
@@ -22,20 +24,24 @@ class SignupController extends Controller
 
     public function register(Request $request)
     {
+        // Get input and trim full_name ONLY
+        $input = $request->all();
+        // $input['full_name'] = isset($input['full_name']) ? trim($input['full_name']) : null;
+
         $request->validate([
-            'full_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-            'profile_picture_url' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'full_name' => ValidationService::nameRules(),
+            'email' => ValidationService::emailSignupRules(),
+            'password' => ValidationService::passwordRules(true),
         ]);
 
         $avatarPath = $this->avatarService->generate($request);
 
+
         $user = User::create([
             'user_id' => (string) Str::uuid(),
-            'full_name' => $request->full_name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
+            'full_name' => $input['full_name'],
+            'email' => $input['email'],
+            'password' => Hash::make($input['password']),
             'profile_picture_url' => asset('storage/' . $avatarPath),
         ]);
 

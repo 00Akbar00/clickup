@@ -43,5 +43,13 @@ class Task extends Model
     {
         return $this->belongsToMany(WorkspaceMember::class, 'task_assignees', 'task_id', 'workspace_member_id');
     }
+    public function team()
+    {
+        return $this->belongsTo(Team::class, 'team_id');
+    }
+    public function listTask()
+    {
+        return $this->belongsTo(TaskList::class, 'list_id'); 
+    }
 
 }

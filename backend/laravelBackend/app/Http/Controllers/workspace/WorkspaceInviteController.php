@@ -30,18 +30,18 @@ class WorkspaceInviteController extends Controller
         try {
             $this->validateWorkspace($workspaceId);
             $this->authorizeInviteAction($workspaceId);
-    
+
             $workspace = Workspace::where('workspace_id', $workspaceId)->firstOrFail();
-    
+
             // Generate and save invite token if missing or expired
             if (!$workspace->invite_token || now()->gt($workspace->invite_token_expires_at)) {
                 $workspace->invite_token = Str::random(32);
                 $workspace->invite_token_expires_at = now()->addHours(48);
                 $workspace->save();
             }
-    
+
             $inviteLink = $this->buildInviteLink($workspace->invite_token);
-    
+
             return response()->json([
                 'status' => 'success',
                 'data' => [
@@ -53,58 +53,54 @@ class WorkspaceInviteController extends Controller
             return $this->handleError($e, 'Failed to generate invite link');
         }
     }
-    
 
     /**
      * Send email invitations to multiple users
      */
+
     public function sendInvitations(Request $request, $workspaceId)
     {
         Log::info("Sending workspace invitations...");
-    
+
         $validator = Validator::make($request->all(), [
             'emails' => 'required|array|min:1',
             'emails.*' => 'required|email',
             'role' => 'required|in:member,admin',
         ]);
-    
+
         if ($validator->fails()) {
             return response()->json([
                 'status' => 'error',
                 'errors' => $validator->errors(),
             ], 422);
         }
-    
+
         $emails = array_unique($request->emails);
         $role = $request->role;
-    
+
         DB::beginTransaction();
-    
+
         try {
             $workspace = Workspace::where('workspace_id', $workspaceId)->firstOrFail();
-    
-            // Use existing invite token (assumes generateInviteLink already called)
+
             if (!$workspace->invite_token || now()->gt($workspace->invite_token_expires_at)) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Invite token missing or expired. Please generate invite link first.',
                 ], 400);
             }
-    
+ 
             $inviterName = Auth::user()->full_name;
-            $inviteLink = route('workspace.join', [
-                'workspace' => $workspace->workspace_id,
-                'token' => $workspace->invite_token,
-            ]);
-    
+            $inviteLink = $this->buildInviteLink($workspace->invite_token);
+
             $results = [];
-    
+
             foreach ($emails as $email) {
                 try {
-                    WorkspaceInvitation::updateOrCreate(
+                    $invitation = WorkspaceInvitation::updateOrCreate(
                         ['workspace_id' => $workspace->workspace_id, 'email' => $email],
                         [
-                            'invitation_id' => (string) Str::uuid(),   // add this line
+                            'invitation_id' => (string) Str::uuid(),
                             'role' => $role,
                             'inviter_name' => $inviterName,
                             'invite_token' => $workspace->invite_token,
@@ -112,8 +108,7 @@ class WorkspaceInviteController extends Controller
                             'status' => 'pending',
                         ]
                     );
-                    
-    
+
                     SendWorkspaceInvitation::dispatch(
                         $email,
                         $workspace->name,
@@ -122,25 +117,26 @@ class WorkspaceInviteController extends Controller
                         $role,
                         $workspace->invite_token_expires_at
                     );
-    
+
                     $results[$email] = 'invited';
                 } catch (\Exception $e) {
                     Log::error("Failed to send invite to $email: " . $e->getMessage());
                     $results[$email] = 'error: ' . $e->getMessage();
                 }
             }
-    
+
             DB::commit();
-    
+
             return response()->json([
                 'status' => 'success',
                 'results' => $results,
+                'invite_link' => $inviteLink,
                 'expires_at' => $workspace->invite_token_expires_at,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Invitation send failed: ' . $e->getMessage());
-    
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to send invitations',
@@ -148,7 +144,7 @@ class WorkspaceInviteController extends Controller
             ], 500);
         }
     }
-    
+
     /**
      * Validate invite token (Public endpoint)
      */
@@ -179,23 +175,34 @@ class WorkspaceInviteController extends Controller
     /**
      * Accept invitation (Auth required)
      */
-    public function joinWorkspace(Request $request)
+    public function joinWorkspace(Request $request,$token)
     {
         DB::beginTransaction();
-        try {
-            $request->validate(['token' => 'required|string']);
-            $workspace = $this->getValidWorkspace($request->token);
 
-            if ($this->isAlreadyMember($workspace->workspace_id, Auth::id())) {
+        try {
+            // $request->validate([
+            //     'token' => 'required|string'
+            // ]);
+
+            // Validate token and get workspace
+            $workspace = $this->getValidWorkspace($token);
+
+            // Check if already a member
+            if ($this->isAlreadyMember($workspace->workspace_id, Auth::user()->user_id)) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'You are already a member of this workspace'
                 ], 409);
             }
 
-            $this->addWorkspaceMember($workspace->workspace_id, Auth::id(), 'member');
+            // Add to workspace members
+            $this->addWorkspaceMember($workspace->workspace_id, Auth::user()->user_id, 'member');
+
+            // ✅ Update user's is_part_of_workspace flag
+            User::where('user_id', Auth::user()->user_id)->update(['is_part_of_workspace' => true]);
 
             DB::commit();
+
             return response()->json([
                 'status' => 'success',
                 'data' => [
@@ -205,6 +212,7 @@ class WorkspaceInviteController extends Controller
                     ]
                 ]
             ]);
+
         } catch (\Exception $e) {
             DB::rollBack();
             return $this->handleError($e, 'Failed to join workspace');
@@ -258,13 +266,6 @@ class WorkspaceInviteController extends Controller
         }
     }
 
-    private function refreshInviteToken($workspace)
-    {
-        $workspace->update([
-            'invite_token' => Str::orderedUuid(),
-            'invite_token_expires_at' => Carbon::now()->addDays(self::INVITE_EXPIRY_DAYS)
-        ]);
-    }
 
     private function buildInviteLink($token)
     {
@@ -275,7 +276,7 @@ class WorkspaceInviteController extends Controller
     {
         $results = [];
         $inviteLink = $this->buildInviteLink($workspace->invite_token);
-    
+
         foreach ($emails as $email) {
             try {
                 // Check if user is already a member
@@ -283,7 +284,7 @@ class WorkspaceInviteController extends Controller
                     $results[$email] = 'Already a member';
                     continue;
                 }
-    
+
                 // Save or update invitation record in DB
                 WorkspaceInvitation::updateOrCreate(
                     ['workspace_id' => $workspace->workspace_id, 'email' => $email],
@@ -295,7 +296,7 @@ class WorkspaceInviteController extends Controller
                         'status' => 'pending',
                     ]
                 );
-    
+
                 // Queue email
                 Mail::to($email)->queue(new WorkspaceInvitationMail(
                     $workspace->name,
@@ -304,17 +305,17 @@ class WorkspaceInviteController extends Controller
                     $role,
                     $workspace->invite_token_expires_at
                 ));
-    
+
                 $results[$email] = 'Invite sent';
             } catch (\Exception $e) {
                 $results[$email] = 'Failed: ' . $e->getMessage();
                 Log::error("Invite failed for {$email}: " . $e->getMessage());
             }
         }
-    
+
         return $results;
     }
-    
+
 
     private function getValidWorkspace($token)
     {
@@ -351,6 +352,7 @@ class WorkspaceInviteController extends Controller
     private function addWorkspaceMember($workspaceId, $userId, $role)
     {
         WorkspaceMember::create([
+            'workspace_member_id' => (string) Str::uuid(),
             'workspace_id' => $workspaceId,
             'user_id' => $userId,
             'role' => $role,

@@ -11,6 +11,7 @@ router.get('/notifications/:userId', async (req, res) => {
       req.params.userId,
       read !== undefined ? read === 'true' : null
     );
+    // console.log(req.params.userId,notifications);
     res.json(notifications);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -18,7 +19,7 @@ router.get('/notifications/:userId', async (req, res) => {
 });
 
 // Mark notification as read
-router.patch('notifications/:id/read', async (req, res) => {
+router.patch('/notifications/:id/read', async (req, res) => {
   try {
     const { userId } = req.body;
     const notification = await NotificationService.markAsRead(req.params.id, userId);

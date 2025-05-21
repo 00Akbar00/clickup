@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Tasks;
 
 use App\Http\Controllers\Controller;
+use App\Models\Team;
+use App\Models\TeamMember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -19,36 +21,58 @@ class TaskAssigneeController extends Controller
     public function assignTask(Request $request, $workspace_id, $task_id)
     {
         $request->validate([
-            'workspace_member_id' => 'required|uuid|exists:workspace_members,workspace_member_id',
+            'team_member_id' => 'required|uuid|exists:team_members,team_member_id',
         ]);
 
-        try {
-            $member = WorkspaceMember::with('user')
-                ->where('workspace_id', $workspace_id)
-                ->where('workspace_member_id', $request->workspace_member_id)
-                ->firstOrFail();
+        $task = Task::with('listTask.project.team')->where('task_id', $task_id)->firstOrFail();
+        // Validate workspace via nested relation
+        $team = $task->list->project->team;
 
-            $task = Task::findOrFail($task_id);
-
-            $assignee = TaskAssignee::create([
-                'task_assignee_id' => Str::uuid(),
-                'task_id' => $task_id,
-                'workspace_member_id' => $request->workspace_member_id,
-                'assigned_by' => Auth::id(),
-            ]);
-
-            // Dispatch event
-            event(new TaskAssigned(
-                $task,
-                $member->user->user_id,
-                Auth::id()
-            ));
-
-            return response()->json(['message' => 'User assigned to task successfully']);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Assignment failed', 'details' => $e->getMessage()], 500);
+        if ($team->workspace_id !== $workspace_id) {
+            return response()->json(['error' => 'Task does not belong to this workspace'], 403);
         }
+
+        // Ensure team member belongs to this team
+        $teamMember = TeamMember::with('user')
+            ->where('team_member_id', $request->team_member_id)
+            ->where('team_id', $team->team_id)
+            ->firstOrFail();
+        // dd($teamMember);
+
+
+        // Check if already assigned via team_member_id
+        $alreadyAssigned = TaskAssignee::where('task_id', $task_id)
+            ->where('team_member_id', $teamMember->team_member_id) // Use the actual value from teamMember
+            ->exists();
+
+        if ($alreadyAssigned) {
+            return response()->json(['message' => 'User is already assigned to this task'], 409);
+        }
+
+        // Debug check
+        if (empty($teamMember->team_member_id)) {
+            return response()->json(['error' => 'Invalid team member ID'], 400);
+        }
+
+        // Create assignment using team_member_id
+        $assignmentData = [
+            'task_assignee_id' => Str::uuid(),
+            'task_id' => $task_id,
+            'team_member_id' => $teamMember->team_member_id,
+            'assigned_by' => Auth::id(),
+            'assigned_at' => now(),
+        ];
+
+        $taskAssignee = TaskAssignee::create($assignmentData);
+
+        event(new TaskAssigned(
+            $task,
+            $teamMember->user->user_id,
+            Auth::id(),
+        ));
+        return response()->json(['message' => 'User assigned to task successfully', 'task assigned' => $taskAssignee]);
     }
+
 
     public function unassignTask($workspace_id, $task_id, $workspace_member_id)
     {
@@ -98,22 +122,34 @@ class TaskAssigneeController extends Controller
     }
 
 
-    // Get all users in the workspace
-    public function getWorkspaceUsers($workspace_id)
+    public function getUserAssignedTasks($workspace_id)
     {
-        try {
-            $workspace = Workspace::with('members.user')->findOrFail($workspace_id);
+        $userId = Auth::id();
 
-            $users = $workspace->members->map(function ($member) {
+        $assignments = TaskAssignee::with(['task.listTask.project.team', 'teamMember.user'])
+            ->whereHas('teamMember', function ($query) use ($userId) {
+                $query->where('user_id', $userId);
+            })
+            ->whereHas('task.listTask.project.team', function ($query) use ($workspace_id) {
+                $query->where('workspace_id', $workspace_id);
+            })
+            ->get()
+            ->map(function ($assignment) {
                 return [
-                    'workspace_member_id' => $member->workspace_member_id,
-                    'user' => $member->user,
+                    'task_id' => $assignment->task->task_id,
+                    'title' => $assignment->task->title,
+                    'description' => $assignment->task->description,
+                    'due_date' => $assignment->task->due_date,
+                    'status' => $assignment->task->status,
+                    'project' => $assignment->task->list->project->name,
+                    'team' => $assignment->task->list->project->team->name,
+                    'workspace_id' => $assignment->task->list->project->team->workspace_id,
+                    'assigned_at' => $assignment->assigned_at,
+                    'assigned_by' => $assignment->assigned_by,
                 ];
             });
 
-            return response()->json(['users' => $users]);
-        } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to fetch users', 'details' => $e->getMessage()], 500);
-        }
+        return response()->json(['tasks' => $assignments]);
     }
+
 }

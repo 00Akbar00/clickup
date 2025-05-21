@@ -26,7 +26,7 @@ return new class extends Migration {
             $table->uuid('workspace_member_id')->primary();
             $table->uuid('workspace_id');
             $table->uuid('user_id');
-            $table->string('role')->default('member');
+           $table->string('role')->default('member');
             $table->timestamp('joined_at')->useCurrent();
             $table->timestamps();
 

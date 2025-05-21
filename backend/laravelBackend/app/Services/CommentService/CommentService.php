@@ -38,11 +38,12 @@ class CommentService
             $requestChannel = "get_comments:{$taskId}";
             $response = null;
             $timeout = now()->addSeconds(5);
-    
+     
             Redis::publish($requestChannel, json_encode(['task_id' => $taskId]));
     
             Redis::connection()->subscribe([$channel], function ($message) use (&$response, $channel, $timeout) {
                 $response = json_decode($message, true);
+                \Log::info('comment response', $response);
                 Redis::connection()->unsubscribe([$channel]); // unsubscribe after getting message
             });
     
@@ -50,7 +51,6 @@ class CommentService
             while (!$response && now()->lt(date: $timeout)) {
                 usleep(100000); // sleep 0.1 second
             }
-    
             if (!$response) {
                 return response()->json(['error' => 'Timeout waiting for comment response'], 504);
             }

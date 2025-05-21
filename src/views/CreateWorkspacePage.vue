@@ -42,6 +42,35 @@
                   ></textarea>
                 </div>
 
+                <div class="mb-4">
+                  <label for="workspaceLogo" class="form-label">Logo (Optional)</label>
+                  <div class="d-flex align-items-center gap-3 mb-2">
+                    <div 
+                      v-if="logoPreview" 
+                      class="logo-preview rounded d-flex align-items-center justify-content-center"
+                    >
+                      <img :src="logoPreview" alt="Logo Preview" class="img-fluid" />
+                    </div>
+                    <div v-else class="logo-placeholder rounded d-flex align-items-center justify-content-center">
+                      <i class="bi bi-building fs-4 text-muted"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                      <input
+                        type="file"
+                        class="form-control"
+                        id="workspaceLogo"
+                        accept="image/*"
+                        @change="handleLogoChange"
+                      >
+                      <div class="form-text">Recommended: Square image (at least 128x128px)</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="errorMessage" class="alert alert-danger mb-4">
+                  {{ errorMessage }}
+                </div>
+
                 <div class="d-grid">
                   <button 
                     type="submit" 
@@ -70,22 +99,48 @@ const router = useRouter()
 const workspaceStore = useWorkspaceStore()
 const workspaceName = ref('')
 const workspaceDescription = ref('')
+const workspaceLogo = ref('')
+const logoPreview = ref('')
 const isLoading = ref(false)
+const errorMessage = ref('')
+
+const handleLogoChange = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = e => {
+      logoPreview.value = e.target.result
+      workspaceLogo.value = e.target.result
+    }
+    reader.readAsDataURL(file)
+  }
+}
 
 const handleSubmit = async () => {
   if (!workspaceName.value.trim()) return
 
+  errorMessage.value = ''
   isLoading.value = true
+  
   try {
-    await workspaceStore.createWorkspace({
+    // Create basic workspace data
+    const workspacePayload = {
       name: workspaceName.value.trim(),
       description: workspaceDescription.value.trim()
-    })
-    localStorage.setItem('hasWorkspace', 'true')
+    }
+    
+    // Only add logo if it exists
+    if (workspaceLogo.value) {
+      workspacePayload.logo = workspaceLogo.value
+    }    
+    await workspaceStore.createWorkspace(workspacePayload)
+    
+    // Set flag and redirect to home
+    localStorage.setItem('has_workspace', 'true')
     router.push('/')
   } catch (error) {
     console.error('Error creating workspace:', error)
-    alert('Failed to create workspace. Please try again.')
+    errorMessage.value = error.response?.data?.message || error.message || 'Failed to create workspace. Please try again.'
   } finally {
     isLoading.value = false
   }
@@ -128,5 +183,20 @@ const handleSubmit = async () => {
 .form-label {
   font-weight: 500;
   color: #444;
+}
+
+.logo-preview, 
+.logo-placeholder {
+  width: 80px;
+  height: 80px;
+  background-color: #f8f9fa;
+  border: 1px dashed #ccc;
+  overflow: hidden;
+}
+
+.logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
 }
 </style> 

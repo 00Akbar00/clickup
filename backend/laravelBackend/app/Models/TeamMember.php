@@ -11,7 +11,12 @@ class TeamMember extends Model
 
     protected $primaryKey = 'team_member_id';
 
+    public $incrementing = false;
+    protected $keyType = 'string';
+
+
     protected $fillable = [
+        'team_member_id',
         'team_id',
         'user_id',
         'role',

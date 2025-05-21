@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
+use Intervention\Image\Encoders\PngEncoder;
 use Laravolt\Avatar\Facade as Avatar;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -14,6 +15,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Workspace;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use App\Models\WorkspaceMember;
 use App\Models\Task;
 use App\Models\TaskAssignee;
@@ -21,66 +23,92 @@ use App\Models\Project;
 use App\Models\Team;
 use App\Models\TeamMember;
 use App\Models\TaskList;
+use App\Models\User;
+use Exception;
 
 class WorkspaceController extends Controller
 {
     // Create new workspace
     public function createWorkspace(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string'
+        $validator = Validator::make($request->all(), [
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                'regex:/^[a-zA-Z0-9\s]+$/'
+            ],
+            'description' => 'nullable|string|max:255',
+            'logo' => 'nullable|file|mimes:jpeg,jpg,png|max:2048'
         ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
         try {
             DB::beginTransaction();
 
-            // Generate random background color
-            $randomColor = sprintf('#%02X%02X%02X', mt_rand(0, 255), mt_rand(0, 255), mt_rand(0, 255));
-
-            // Generate avatar
-            $avatar = Avatar::create($request->name)
-                ->setBackground($randomColor)
-                ->setDimension(200)
-                ->setFontSize(100);
-
+            $name = $request->input('name', 'Workspace');
+            $workspaceId = Str::uuid();
             $avatarDirectory = 'workspace-logos';
             Storage::makeDirectory("public/{$avatarDirectory}");
 
-            $avatarFileName = Str::uuid() . '.png';
-            $avatarPath = "{$avatarDirectory}/{$avatarFileName}";
-            // $avatar->save(storage_path("app/public/{$avatarPath}"));
-            Storage::disk('public')->put($avatarPath,  $avatar);
+            // Handle logo upload or avatar generation
+            if ($request->hasFile('logo')) {
+                $uploadedLogo = $request->file('logo');
+                $avatarFileName = Str::uuid() . '.' . $uploadedLogo->getClientOriginalExtension();
+                $avatarPath = "{$avatarDirectory}/{$avatarFileName}";
 
+                Storage::disk('public')->putFileAs($avatarDirectory, $uploadedLogo, $avatarFileName);
+            } else {
+                $initial = strtoupper(mb_substr(trim($name), 0, 1));
+                $avatar = Avatar::create($initial)->getImageObject()->encode(new PngEncoder());
 
-            // Create workspace with UUID
-            $workspaceId = Str::uuid();
+                $avatarFileName = Str::uuid() . '.png';
+                $avatarPath = "{$avatarDirectory}/{$avatarFileName}";
 
+                Storage::disk('public')->put($avatarPath, $avatar);
+            }
+
+            $logoUrl = asset("storage/{$avatarPath}");
+
+            // Insert into workspaces table
             DB::table('workspaces')->insert([
                 'workspace_id' => $workspaceId,
-                'name' => $request->name,
-                'description' => $request->description,
-                'created_by' => Auth::user()->user_id,
+                'name' => $name,
+                'description' => $request->input('description'),
+                'created_by' => Auth::id(),
                 'invite_token' => Str::uuid(),
                 'invite_token_expires_at' => Carbon::now()->addDays(7),
-                'logo_url' => asset("storage/{$avatarPath}"),
+                'logo_url' => $logoUrl,
                 'created_at' => now(),
                 'updated_at' => now()
             ]);
 
-            // Add creater to workspace_members with UUID
+            // Insert into workspace_members table
             DB::table('workspace_members')->insert([
                 'workspace_member_id' => Str::uuid(),
                 'workspace_id' => $workspaceId,
-                'user_id' => Auth::user()->user_id,
+                'user_id' => Auth::id(),
                 'role' => 'owner',
                 'joined_at' => now()
+            ]);
+
+            // Update user's workspace status
+            User::where('user_id', Auth::id())->update([
+                'is_part_of_workspace' => true
             ]);
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
+                'message' => 'Workspace created successfully',
                 'workspace' => DB::table('workspaces')->where('workspace_id', $workspaceId)->first()
             ], 201);
 
@@ -99,55 +127,69 @@ class WorkspaceController extends Controller
             ], 500);
         }
     }
+
     // List user's workspaces
     public function getWorkspaces()
     {
-        $workspaces = DB::table('workspaces')
-            ->join('workspace_members', 'workspaces.workspace_id', '=', 'workspace_members.workspace_id')
-            ->where('workspace_members.user_id', Auth::user()->user_id)
-            ->select('workspaces.*')
-            ->get();
+        try {
+            $userId = Auth::user()->user_id;
 
-        return response()->json([
-            'success' => true,
-            'workspaces' => $workspaces
-        ]);
+            // Get all workspace IDs for this user
+            $workspaceIds = WorkspaceMember::where('user_id', $userId)
+                ->pluck('workspace_id');
+
+            // Now fetch workspaces using those IDs
+            $workspaces = Workspace::whereIn('workspace_id', $workspaceIds)->get();
+
+            return response()->json([
+                'success' => true,
+                'workspaces' => $workspaces,
+                'message' => 'Workspaces fetched successfully.',
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch workspaces.',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-    public function getWorkspace($workspace_id)
+    public function getWorkspaceById(Request $request, int $workspaceId)
     {
         try {
-            $workspace = Workspace::find($workspace_id);
+            $userId = Auth::user()->user_id;
 
-            if (!$workspace) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Workspace not found'
-                ], 404);
-            }
-
-            // Check if user is a member of the workspace
-            $isMember = WorkspaceMember::where('workspace_id', $workspace_id)
-                ->where('user_id', Auth::user()->user_id)
+            // Check if user is a member of the given workspace
+            $isMember = WorkspaceMember::where('user_id', $userId)
+                ->where('workspace_id', $workspaceId)
                 ->exists();
 
             if (!$isMember) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized - You are not a member of this workspace'
+                    'message' => 'You do not have access to this workspace.',
                 ], 403);
             }
 
+            // Fetch the workspace
+            $workspace = Workspace::findOrFail($workspaceId);
+
             return response()->json([
                 'success' => true,
-                'workspace' => $workspace
+                'workspace' => $workspace,
+                'message' => 'Workspace retrieved successfully.',
             ]);
-
-        } catch (\Exception $e) {
+        } catch (ModelNotFoundException $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to fetch workspace',
-                'error' => $e->getMessage()
+                'message' => 'Workspace not found.',
+            ], 404);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'An unexpected error occurred while retrieving the workspace.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -155,80 +197,86 @@ class WorkspaceController extends Controller
     public function updateWorkspace(Request $request, $workspace_id)
     {
         try {
-            // Validate the request
+            // Validation
             $validator = Validator::make($request->all(), [
-                'name' => 'sometimes|required|string|max:255',
-                'description' => 'nullable|string',
-                'logo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+                'name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'regex:/^[a-zA-Z0-9\s]+$/',
+                ],
+                'description' => 'nullable|string|max:100',
+                'logo' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
             ]);
 
             if ($validator->fails()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation error',
-                    'errors' => $validator->errors()
+                    'message' => 'Validation failed.',
+                    'errors' => $validator->errors()->toArray(),
                 ], 422);
             }
 
-            // Check if workspace exists and user has permission to update it
+            // Workspace existence check
             $workspace = Workspace::find($workspace_id);
             if (!$workspace) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Workspace not found'
+                    'message' => 'Workspace not found.',
                 ], 404);
             }
 
-            // Check if user is a member of the workspace with appropriate permissions
-            $userMembership = WorkspaceMember::where('workspace_id', $workspace_id)
-                ->where('user_id', Auth::user()->user_id)
+            // Authorization check
+            $userId = Auth::user()->user_id;
+            $isAuthorized = WorkspaceMember::where('workspace_id', $workspace_id)
+                ->where('user_id', $userId)
                 ->whereIn('role', ['owner', 'admin'])
-                ->first();
+                ->exists();
 
-            if (!$userMembership) {
+            if (!$isAuthorized) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized - You do not have permission to update this workspace'
+                    'message' => 'Unauthorized access.',
                 ], 403);
             }
 
-            // Handle logo upload if present
-            $logoUrl = $workspace->logo_url;
+            // Prepare data
+            $data = $request->only(['name', 'description']);
+
+            // Handle logo
             if ($request->hasFile('logo')) {
-                // Delete old logo if exists
-                if ($logoUrl && Storage::exists($logoUrl)) {
-                    Storage::delete($logoUrl);
+                $logoFile = $request->file('logo');
+                $fileName = uniqid('workspace_logo_') . '.' . $logoFile->getClientOriginalExtension();
+                $filePath = 'workspace_logos/' . $fileName;
+
+                // Delete old logo
+                if ($workspace->logo_url) {
+                    $oldPath = str_replace('/storage/', 'public/', $workspace->logo_url);
+                    if (Storage::exists($oldPath)) {
+                        Storage::delete($oldPath);
+                    }
                 }
 
-                $path = $request->file('logo')->store('workspace_logos', 'public');
-                $logoUrl = Storage::url($path);
+                // Save new logo
+                Storage::disk('public')->put($filePath, file_get_contents($logoFile));
+                $data['logo_url'] = Storage::url($filePath);
             }
 
-            // Update workspace data
-            $updateData = [];
-            if ($request->has('name')) {
-                $updateData['name'] = $request->name;
-            }
-            if ($request->has('description')) {
-                $updateData['description'] = $request->description;
-            }
-            if ($logoUrl) {
-                $updateData['logo_url'] = $logoUrl;
-            }
-
-            $workspace->update($updateData);
+            // Update
+            $workspace->update($data);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Workspace updated successfully',
-                'workspace' => $workspace
+                'message' => 'Workspace updated successfully.',
+                'data' => [
+                    'workspace' => $workspace,
+                ],
             ]);
-
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update workspace',
-                'error' => $e->getMessage()
+                'message' => 'An unexpected error occurred while updating the workspace.',
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -236,89 +284,85 @@ class WorkspaceController extends Controller
     public function deleteWorkspace($workspace_id)
     {
         try {
+            // transaction
             DB::beginTransaction();
 
-            // Check if workspace exists
+            // Fetch workspace
             $workspace = Workspace::find($workspace_id);
+
             if (!$workspace) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Workspace not found'
+                    'message' => 'Workspace not found.'
                 ], 404);
             }
 
-            // Check if user is the owner of the workspace
+            // Authorization - Only owner can delete
+            $userId = Auth::user()->user_id;
+
             $isOwner = WorkspaceMember::where('workspace_id', $workspace_id)
-                ->where('user_id', Auth::user()->user_id)
+                ->where('user_id', $userId)
                 ->where('role', 'owner')
                 ->exists();
 
             if (!$isOwner) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Unauthorized - Only workspace owners can delete the workspace'
+                    'message' => 'Unauthorized. Only the workspace owner can delete this workspace.'
                 ], 403);
             }
 
-            // Get all teams in the workspace
+            // Delete all associated data
             $teams = Team::where('workspace_id', $workspace_id)->get();
 
             foreach ($teams as $team) {
-                // Get all projects in the team
                 $projects = Project::where('team_id', $team->team_id)->get();
 
                 foreach ($projects as $project) {
-                    // Get all lists in the project
                     $lists = TaskList::where('project_id', $project->project_id)->get();
 
                     foreach ($lists as $list) {
-                        // Get all tasks in the list
                         $tasks = Task::where('list_id', $list->list_id)->get();
 
                         foreach ($tasks as $task) {
-                            // Delete task assignees
                             TaskAssignee::where('task_id', $task->task_id)->delete();
-                            // Delete the task
                             $task->delete();
                         }
 
-                        // Delete the list
                         $list->delete();
                     }
 
-                    // Delete the project
                     $project->delete();
                 }
 
-                // Delete team members
                 TeamMember::where('team_id', $team->team_id)->delete();
-                // Delete the team
                 $team->delete();
             }
 
-            // Delete workspace members
             WorkspaceMember::where('workspace_id', $workspace_id)->delete();
-
-            // Delete the workspace itself
             $workspace->delete();
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Workspace and all associated data deleted successfully'
-            ]);
+                'message' => 'Workspace and all related data deleted successfully.'
+            ], 200);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             DB::rollBack();
-            Log::error('Workspace deletion error', [
+
+            // Log error for debugging
+            Log::error('Failed to delete workspace', [
+                'workspace_id' => $workspace_id,
+                'user_id' => Auth::id(),
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete workspace',
+                'message' => 'An error occurred while deleting the workspace.',
                 'error' => config('app.debug') ? $e->getMessage() : null
             ], 500);
         }

@@ -18,7 +18,7 @@ class PasswordResetController extends Controller
         $this->passwordResetService = $passwordResetService;
     }
 
-//Forget Password
+    //Forget Password
     public function forgotPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -41,7 +41,7 @@ class PasswordResetController extends Controller
             ], 200);
         }
 
-   
+
         $token = bin2hex(random_bytes(32)); // 64-character secure token
 
         // $expiry = now()->addMinutes(1);
@@ -49,9 +49,9 @@ class PasswordResetController extends Controller
         $user->reset_token = $token;
         $user->reset_token_expires_at = $expiry;
         $user->save();
-        
+
         // \Log::info("Generated reset token for user {$user->id}, expires at: {$expiry}");
-        
+
         // Send reset email via service
         $resetURL = $this->passwordResetService->sendResetLink($user);
 
@@ -65,7 +65,17 @@ class PasswordResetController extends Controller
     public function resetPassword(Request $request, $token)
     {
         $validator = Validator::make($request->all(), [
-            'password' => 'required|string|min:8|confirmed',
+            'password' => [
+                'required',
+                'string',
+                'min:8',
+                'max:20',
+                'regex:/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/'
+            ],
+            [
+                'password.min' => 'Password must be at least 8 characters.',
+                'password.regex' => 'Password must include uppercase, lowercase, number, and special character.',
+            ]
         ]);
 
         if ($validator->fails()) {
@@ -87,7 +97,7 @@ class PasswordResetController extends Controller
         $user->reset_token = null;
         $user->reset_token_expires_at = null;
         $user->save();
-        
+
         return response()->json([
             'message' => 'Your password has been reset successfully.'
         ]);

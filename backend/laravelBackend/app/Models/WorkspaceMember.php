@@ -13,7 +13,13 @@ class WorkspaceMember extends Model
     public $incrementing = false;
     protected $keyType = 'string';
 
-    protected $fillable = ['workspace_member_id', 'workspace_id', 'user_id', 'joined_at'];
+    protected $fillable = [
+        'workspace_member_id',
+        'workspace_id',
+        'user_id',
+        'role',
+        'joined_at'
+    ];
 
     public function user()
     {

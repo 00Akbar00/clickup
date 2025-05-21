@@ -2,16 +2,56 @@
 import { ref, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { useTeamspaceStore } from '../stores/teamspaceStore';
+import { useProjectStore } from '../stores/projectStore';
 import * as bootstrap from 'bootstrap';
 import { useNavigationStore } from '../stores/navigationStore';
 
 const route = useRoute();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
+const teamspaceStore = useTeamspaceStore();
+const projectStore = useProjectStore();
 const navigationStore = useNavigationStore();
 
+// Helper function to format dates to DD/MM/YY format
+const formatDate = (dateString) => {
+  if (!dateString) return '';
+  
+  // If it's already in DD/MM/YY format, return as is
+  if (dateString.match(/^\d{2}\/\d{2}\/\d{2}$/)) {
+    return dateString;
+  }
+  
+  // If it's in DD-MM-YYYY format
+  if (dateString.match(/^\d{2}-\d{2}-\d{4}$/)) {
+    const parts = dateString.split('-');
+    return `${parts[0]}/${parts[1]}/${parts[2].substring(2)}`;
+  }
+  
+  // If it's in YYYY-MM-DD format
+  if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+    const parts = dateString.split('-');
+    return `${parts[2]}/${parts[1]}/${parts[0].substring(2)}`;
+  }
+  
+  // For ISO date strings or any other format
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear().toString().substring(2);
+    return `${day}/${month}/${year}`;
+  } catch (e) {
+    console.error('Error formatting date:', e);
+    return dateString;
+  }
+};
+
 const project = computed(() => {
-  const teamspace = workspaceStore.teamspaces.find(
+  const teamspace = teamspaceStore.teamspaces.find(
     t => t.name === decodeURIComponent(route.params.teamspaceName)
   );
   if (!teamspace) return null;
@@ -94,7 +134,7 @@ const showNewListModal = () => {
           </div>
           <div class="list-due-date">
             <i class="bi bi-calendar me-1"></i>
-            {{ list.dueDate || 'No date' }}
+            {{ formatDate(list.dueDate) || 'No date' }}
           </div>
           <div class="list-priority">
             <i class="bi bi-flag me-1"></i>

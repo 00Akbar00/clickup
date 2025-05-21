@@ -16,7 +16,7 @@ class TaskAssignee extends Model
     protected $fillable = [
         'task_assignee_id',
         'task_id',
-        'workspace_member_id',
+        'team_member_id',
         'assigned_by',
         'assigned_at',
     ];
@@ -34,5 +34,9 @@ class TaskAssignee extends Model
     public function assignedBy()
     {
         return $this->belongsTo(User::class, 'assigned_by');
+    }
+    public function teamMember()
+    {
+        return $this->belongsTo(TeamMember::class, 'team_member_id');
     }
 }

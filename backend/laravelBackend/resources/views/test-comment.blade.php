@@ -38,26 +38,30 @@
 
     <script>
         const taskId = "{{ $taskId }}";
+        const authToken = "{{ $authToken }}";
+    
         const socket = io('http://localhost:3002', {
+            transports: ['websocket'],
+            auth: {
+                token: authToken
+            },
             reconnectionAttempts: 5,
             reconnectionDelay: 1000,
         });
-
-        // Socket.IO connection status
+    
         socket.on('connect', () => {
-            console.log('Connected to Socket.IO');
+            console.log('✅ Connected to Socket.IO');
             document.getElementById('connection-status').className = 'status connected';
             document.getElementById('connection-status').textContent = 'Connected to Socket.IO';
-            
-            // Join the task room
             socket.emit('join_task', taskId);
         });
-
+    
         socket.on('disconnect', () => {
-            console.log('Disconnected from Socket.IO');
+            console.log('❌ Disconnected from Socket.IO');
             document.getElementById('connection-status').className = 'status disconnected';
             document.getElementById('connection-status').textContent = 'Disconnected from Socket.IO';
-        });
+        })
+    
 
         // Handle new comments
         socket.on('new_comment', (comment) => {
@@ -87,7 +91,8 @@
                             'X-CSRF-TOKEN': '{{ csrf_token() }}'
                         },
                         body: JSON.stringify({
-                            sender_id: "51d0da3a-dd0c-4532-a2a3-d17aa299601e",
+                            // sender_id: "80c36a53-5314-4b05-a3f2-855b6da03998",
+                            // full_name:"AKBAR"
                             comment: comment
                         })
                     });

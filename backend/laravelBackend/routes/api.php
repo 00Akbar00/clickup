@@ -9,6 +9,7 @@ use App\Http\Controllers\Projects\ProjectController;
 use App\Http\Controllers\Tasks\TaskAssigneeController;
 use App\Http\Controllers\Tasks\TaskController;
 use App\Http\Controllers\Teams\TeamController;
+use App\Http\Controllers\Teams\TeamMemberController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\UserController;
@@ -18,9 +19,9 @@ use App\Http\Controllers\Workspace\WorkspaceInviteController;
 
 
 Route::middleware(['throttle:signup-limiter'])->group(function () {
-    Route::post('/login', [LoginController::class, 'login']);
+    Route::post('/login', [LoginController::class, 'login'])->name('login');
 });
-Route::post('/signup', [SignupController::class, 'register']);
+Route::post('/signup', [SignupController::class, 'register'])->name('signup');
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
@@ -35,7 +36,7 @@ Route::middleware('check.token.expiry')->group(function () {
 Route::middleware('auth:api')->group(function () {
     Route::prefix('workspaces')->group(function () {
         Route::get('/', [WorkspaceController::class, 'getWorkspaces']);
-        Route::get('/{workspace_id}', [WorkspaceController::class, 'getWorkspace']);
+        Route::get('/{workspace_id}', [WorkspaceController::class, 'getWorkspaceByid']);
         Route::put('/{workspace_id}', [WorkspaceController::class, 'updateWorkspace']);
         Route::post('/', [WorkspaceController::class, 'createWorkspace']);
         Route::delete('/{workspace_id}', [WorkspaceController::class, 'deleteWorkspace']);
@@ -44,6 +45,8 @@ Route::middleware('auth:api')->group(function () {
 
 Route::prefix('workspaces/{workspace_id}')->middleware(['auth:api'])->group(function () {
     Route::get('/members', [WorkspaceMemberController::class, 'listMembers']);
+    Route::get('/members/{member_id}', [WorkspaceMemberController::class, 'getWorkspaceMemberById']);
+
     Route::post('/members', [WorkspaceMemberController::class, 'addMember']);
     Route::put('/members/{member_id}/role', [WorkspaceMemberController::class, 'updateMemberRole']);
     Route::delete('/members/{member_id}', [WorkspaceMemberController::class, 'removeMember']);
@@ -52,7 +55,7 @@ Route::prefix('workspaces/{workspace_id}')->middleware(['auth:api'])->group(func
     Route::post('/invites/link', [WorkspaceInviteController::class, 'generateInviteLink']);
     Route::post('/invites/send', [WorkspaceInviteController::class, 'sendInvitations']);
     Route::delete('/invites', [WorkspaceInviteController::class, 'revokeInvite']);
-}); 
+});
 
 Route::get('/workspaces/{workspace}/join/{token}', [WorkspaceInviteController::class, 'acceptInvite'])
     ->name('workspace.join');
@@ -60,7 +63,7 @@ Route::get('/workspaces/{workspace}/join/{token}', [WorkspaceInviteController::c
 
 Route::prefix('invites')->group(function () {
     Route::get('/verify', [WorkspaceInviteController::class, 'verifyInvite']);
-    Route::post('/join', [WorkspaceInviteController::class, 'joinWorkspace'])->middleware('auth:api');
+    Route::post('/join/{invite_token}', [WorkspaceInviteController::class, 'joinWorkspace'])->middleware('auth:api');
 });
 
 Route::prefix('teams')->middleware(['auth:api'])->group(function () {
@@ -108,9 +111,10 @@ Route::middleware('auth:api')->group(function () {
 
 Route::middleware('auth:api')->group(function () {
     Route::prefix('workspace/{workspace_id}')->group(function () {
-        Route::get('/members', [TaskAssigneeController::class, 'getWorkspaceUsers']);
+        // Route::get('/members', [TaskAssigneeController::class, 'getWorkspaceUsers']);
         Route::post('/tasks/{task_id}/assign', [TaskAssigneeController::class, 'assignTask']);
         Route::delete('/tasks/{task_id}/unassign/{workspace_member_id}', [TaskAssigneeController::class, 'unassignTask']);
+        Route::get('/getAssignedTasks', [TaskAssigneeController::class, 'getUserAssignedTasks']);
     });
 
     Route::get('/tasks/{task_id}/assignees', [TaskAssigneeController::class, 'getTaskAssignees']);
@@ -119,4 +123,9 @@ Route::middleware('auth:api')->group(function () {
 Route::middleware('auth:api')->group(function () {
 Route::post('/tasks/{task_id}/comments', [CommentController::class, 'createComment']);
 Route::get('/tasks/{task_id}/comments', [CommentController::class, 'getComments']);
+});
+
+Route::middleware('auth:api')->group(function () {
+    Route::post('/team-members/add-members/{team_id}', [TeamMemberController::class, 'addMembersToTeam']);
+    Route::get('/workspace/{workspace_id}/members', [TeamMemberController::class, 'getWorkspaceUsers']);
 });

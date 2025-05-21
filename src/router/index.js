@@ -1,7 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomePage from '../views/HomePage.vue'
-import Page2 from '../views/Page2.vue'
-import Page3 from '../views/Page3.vue'
 import ListView from '../views/ListView.vue'
 import Auth from '../views/Auth.vue'
 import InboxPage from '../views/InboxPage.vue'
@@ -31,9 +29,6 @@ const router = createRouter({
     {
       path: '/auth',
       name: 'auth',
-      // path: '/reset-password/:token',
-      // name: 'reset-password',
-      
       component: Auth
     },
     {
@@ -47,9 +42,15 @@ const router = createRouter({
       component: Auth
     },
     {
-      path: '/api/reset-password/:token',
+      path: '/reset-password/:token',
       name: 'reset-password',
       component: Auth
+    },
+    {
+      path: '/api/workspaces/:workspaceId/join/:token',
+      name: 'workspace-invitation',
+      component: Auth,
+      props: true
     },
     {
       path: '/:teamspaceName',
@@ -65,36 +66,71 @@ const router = createRouter({
       path: '/:teamspaceName/:projectName/:listName',
       name: 'list',
       component: ListView
+    },
+    {
+      path: '/list/:teamId/:projectId/:listId',
+      name: 'list-view',
+      component: ListView
     }
   ]
 })
 
 // Navigation guards
 router.beforeEach((to, from, next) => {
-  const isAuthenticated = !!localStorage.getItem('authUser')
-  const hasWorkspace = !!localStorage.getItem('hasWorkspace')
-  
-  // Skip auth check for auth page and related pages
-  if (to.name === 'auth' || to.name === 'forgot-password' || to.name === 'reset-password') {
+  try {
+    const isAuthenticated = !!localStorage.getItem('authUser')
+    const hasWorkspace = !!localStorage.getItem('has_workspace')
+    
+    console.log('Route navigation:', { 
+      to: to.name, 
+      isAuthenticated, 
+      hasWorkspace 
+    })
+    
+    // Store invitation params in localStorage if present in the route
+    if (to.name === 'workspace-invitation') {
+      localStorage.setItem('pendingInvitation', JSON.stringify({
+        workspaceId: to.params.workspaceId,
+        token: to.params.token
+      }))
+      
+      // If not authenticated, continue to auth component
+      if (!isAuthenticated) {
+        next()
+        return
+      }
+      
+      // If already authenticated, redirect to home to process invitation
+      next({ name: 'home' })
+      return
+    }
+    
+    // Skip auth check for auth page and related pages
+    if (to.name === 'auth' || to.name === 'forgot-password' || to.name === 'reset-password') {
+      next()
+      return
+    }
+
+    // If not authenticated, redirect to auth
+    if (!isAuthenticated) {
+      next({ name: 'auth' })
+      return
+    }
+
+    // If authenticated but no workspace, force create-workspace
+    // unless they're already on the create-workspace page
+    if (!hasWorkspace && to.name !== 'create-workspace') {
+      next({ name: 'create-workspace' })
+      return
+    }
+
+    // Otherwise proceed as normal
     next()
-    return
-  }
-
-  // If not authenticated, redirect to auth
-  if (!isAuthenticated) {
+  } catch (error) {
+    console.error('Navigation guard error:', error)
+    // In case of error, redirect to auth page as fallback
     next({ name: 'auth' })
-    return
   }
-
-  // If authenticated but no workspace, force create-workspace
-  // unless they're already on the create-workspace page
-  if (!hasWorkspace && to.name !== 'create-workspace') {
-    next({ name: 'create-workspace' })
-    return
-  }
-
-  // Otherwise proceed as normal
-  next()
 })
 
 export default router 

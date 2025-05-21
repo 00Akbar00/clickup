@@ -103,14 +103,18 @@ class TeamController extends Controller
         }
 
         try {
-            $this->teamService->deleteTeam($team_id, auth()->id());
+            $this->teamService->deleteTeam($team_id, auth()->user()->user_id);
+
             return response()->json(['message' => 'Team deleted successfully']);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Team not found'], 404);
-        } catch (\Throwable $e) {
-            return response()->json(['error' => $e->getMessage()], $e->getCode() ?: 500);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => $e->getMessage(),
+            ], $e->getCode() === 403 ? 403 : 500);
         }
     }
+
 
     // Get team members
     public function getTeamMembers($team_id)

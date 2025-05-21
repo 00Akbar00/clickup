@@ -12,6 +12,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceMember;
 use App\Models\User;
 use App\Models\TeamMember;
+use Str;
 
 class WorkspaceMemberController extends Controller
 {
@@ -81,6 +82,48 @@ class WorkspaceMemberController extends Controller
         }
     }
 
+    public function getWorkspaceMemberById($workspaceId, $memberId)
+    {
+        // First verify the workspace exists (optional but recommended)
+        $workspaceExists = Workspace::where('workspace_id', $workspaceId)->exists();
+        
+        if (!$workspaceExists) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Workspace not found',
+            ], 404);
+        }
+    
+        // Then find the member within that workspace
+        $member = WorkspaceMember::with(['user', 'workspace'])
+            ->where('workspace_member_id', $memberId)
+            ->where('workspace_id', $workspaceId)
+            ->first();
+    
+        if (!$member) { 
+            return response()->json([
+                'success' => false,
+                'message' => 'Workspace member not found in this workspace',
+            ], 404);
+        }
+    
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'workspace_member_id' => $member->workspace_member_id,
+                'workspace_id' => $member->workspace_id,
+                'user_id' => $member->user_id,
+                'role' => $member->role,
+                'user_name' => $member->user->full_name,
+                'user_email' => $member->user->email,
+                'workspace_name' => $member->workspace->name,
+                'joined_at' => $member->joined_at,
+                'created_at' => $member->created_at,
+                'updated_at' => $member->updated_at
+            ]
+        ]);
+    }
+
     /**
      * Manually add a user to a workspace
      * 
@@ -146,6 +189,7 @@ class WorkspaceMemberController extends Controller
 
             // Add the member
             $member = WorkspaceMember::create([
+                'workspace_member_id' => Str::uuid(),
                 'workspace_id' => $workspaceId,
                 'user_id' => $userToAdd->user_id,
                 'role' => $request->role,

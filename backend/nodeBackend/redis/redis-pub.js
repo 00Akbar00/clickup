@@ -1,6 +1,6 @@
 const { createClient } = require("redis");
 const Comment = require('../Models/Comment');
-const Notification = require('../Models/Notification');
+const Notification = require('../Models/Notifications');
 
 class RedisPubSub {
   constructor() {

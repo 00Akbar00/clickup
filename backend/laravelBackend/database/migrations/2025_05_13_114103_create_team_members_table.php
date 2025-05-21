@@ -9,11 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('team_members', function (Blueprint $table) {
-            $table->id('team_member_id');
+            $table->uuid('team_member_id')->primary();
             $table->uuid('team_id');  
             $table->uuid('user_id');  
 
-            $table->string('role'); // owner | admin | member | guest
+            $table->string('role'); // owner | member 
             $table->timestamp('joined_at')->useCurrent();
             $table->timestamps();
 

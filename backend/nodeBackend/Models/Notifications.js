@@ -3,10 +3,10 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
 const notificationSchema = new Schema({
-  workspace_id: {
-    type: String,
-    required: true,
-  },
+  // workspace_id: {
+  //   type: String,
+  //   required: true,
+  // },
   recipient_id: {
     type: String,
     required: true,

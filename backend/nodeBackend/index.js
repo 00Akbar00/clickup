@@ -3,13 +3,12 @@ const http = require("http");
 require("dotenv").config();
 const socketIo = require("socket.io");
 const cors = require("cors");
+const mongoose = require("mongoose"); // Add this missing import
 const connectDB = require("./config/db");
 const RedisSubscriber = require("./redis/redis-sub");
-const ChangeStreamService = require("./Services/changeStream");
-const commentRoutes = require("./Routes/commentRoutes");
+// const ChangeStreamService = require("./Services/changeStream");
 const notificationRoutes = require("./Routes/notificationRoutes");
 require("./redis/redis-pub");
-
 class Server {
   constructor() {
     this.app = express();
@@ -26,7 +25,7 @@ class Server {
         methods: ["GET", "POST"],
         credentials: true,
       },
-      transports: ["websocket", "polling"],
+      transports: ["websocket"],
     });
 
     this.setupMiddleware();
@@ -49,7 +48,7 @@ class Server {
   }
 
   setupRoutes() {
-    this.app.use("/api/comments", commentRoutes);
+
     this.app.use("/api/notifications", notificationRoutes);
 
     // Health check endpoint
@@ -62,6 +61,9 @@ class Server {
       });
     });
   }
+
+
+  
 
   setupSocketIO() {
     this.io.on("connection", (socket) => {
@@ -104,8 +106,8 @@ class Server {
       // Optional: Initialize Redis publisher if needed elsewhere
       // this.redisPublisher = require('./redis/redis-pub');
 
-      await ChangeStreamService.watchComments();
-      console.log("🟢 MongoDB Change Stream watching comments");
+      // await ChangeStreamService.watchComments();
+      // console.log("🟢 MongoDB Change Stream watching comments");
     } catch (err) {
       console.error("❌ Failed to setup Redis:", err);
       process.exit(1);
@@ -115,12 +117,20 @@ class Server {
   setupErrorHandling() {
     // Handle unhandled promise rejections
     process.on("unhandledRejection", (err) => {
-      console.error("Unhandled Rejection:", err);
+      console.error("Unhandled Rejection:", err?.message || err || "Unknown rejection");
+      console.error("Stack:", err?.stack || "No stack trace available");
     });
 
     // Handle uncaught exceptions
     process.on("uncaughtException", (err) => {
-      console.error("Uncaught Exception:", err);
+      if (err) {
+        console.error("Uncaught Exception:", err.message || String(err));
+        if (err.stack) {
+          console.error("Stack:", err.stack);
+        }
+      } else {
+        console.error("Uncaught Exception: Unknown exception (no error object provided)");
+      }
       process.exit(1);
     });
 
@@ -129,9 +139,16 @@ class Server {
       res.status(404).json({ error: "Not Found" });
     });
 
-    // Handle other errors
+    // Handle other errors - Fixed this part
     this.app.use((err, req, res, next) => {
-      console.error("Server Error:", err.stack);
+      if (err) {
+        console.error("Server Error:", err.message || err);
+        if (err.stack) {
+          console.error("Stack:", err.stack);
+        }
+      } else {
+        console.error("Server Error: Unknown error occurred");
+      }
       res.status(500).json({ error: "Internal Server Error" });
     });
   }
@@ -142,7 +159,7 @@ class Server {
 
   tryPort(port) {
     this.server.on("error", (e) => {
-      if (e.code === "EADDRINUSE") {
+      if (e && e.code === "EADDRINUSE") {
         console.error(`Port ${port} is already in use.`);
         const nextPort = this.backupPorts.shift();
         if (nextPort) {
@@ -154,7 +171,15 @@ class Server {
           process.exit(1);
         }
       } else {
-        console.error("Server error:", e);
+        // Safe error logging
+        if (e) {
+          console.error("Server error:", e.message || String(e));
+          if (e.stack) {
+            console.error("Stack:", e.stack);
+          }
+        } else {
+          console.error("Server error: Unknown error (no error object provided)");
+        }
       }
     });
 
@@ -163,28 +188,6 @@ class Server {
       console.log(`📡 API available at http://localhost:${port}`);
       console.log(`⚡ Socket.IO ready for connections`);
 
-      // Optional: Log all available routes
-      if (process.env.NODE_ENV === "development") {
-        const routes = [];
-        this.app._router.stack.forEach((middleware) => {
-          if (middleware.route) {
-            routes.push({
-              path: middleware.route.path,
-              methods: Object.keys(middleware.route.methods),
-            });
-          } else if (middleware.name === "router") {
-            middleware.handle.stack.forEach((handler) => {
-              if (handler.route) {
-                routes.push({
-                  path: handler.route.path,
-                  methods: Object.keys(handler.route.methods),
-                });
-              }
-            });
-          }
-        });
-        console.log("🛣️ Available routes:", routes);
-      }
     });
   }
 }
@@ -196,6 +199,6 @@ connectDB()
     server.start();
   })
   .catch((err) => {
-    console.error("❌ Failed to connect to MongoDB:", err);
+    console.error("❌ Failed to connect to MongoDB:", err?.message || err || "Unknown connection error");
     process.exit(1);
   });

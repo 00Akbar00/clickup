@@ -1,6 +1,7 @@
 // redis/redis-sub.js
 const { createClient } = require("redis");
-const Notification = require("../Models/Notification");
+const Notification = require("../Models/Notifications");
+const { createComment } = require('../Services/commentService');
 
 class RedisSubscriber {
   constructor(io) {
@@ -28,11 +29,12 @@ class RedisSubscriber {
     await this.redisClient.subscribe("comments", async (message) => {
       try {
         const commentData = JSON.parse(message);
-        const newComment = await createComment({
+        
+        this.io.to(commentData.task_id).emit("new_comment", commentData);
+        await createComment({
           ...commentData,
           publishedAt: new Date(),
         });
-        this.io.to(commentData.task_id).emit("new_comment", newComment);
       } catch (err) {
         console.error("Error processing comment message:", err);
       }

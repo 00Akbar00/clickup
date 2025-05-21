@@ -1,13 +1,15 @@
 <?php
-
+ 
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 
 use App\Models\User;
+use App\Services\VerifyValidationService\ValidationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use App\Services\AuthService\TokenService;
+use Illuminate\Support\Facades\Validator;
 
 
 class LoginController extends Controller
@@ -21,19 +23,26 @@ class LoginController extends Controller
 
     public function login(Request $request)
     {
-        $validated = $request->validate([
-            'email' => 'required|email',
+        // Validate input using Validator with custom rules and messages
+        $validator = $request->validate([
+            'email' => ValidationService::emailLoginRules(),
             'password' => 'required|string',
         ]);
-
-        $user = User::where('email', $validated['email'])->first();
-
-        if (!$user || !Hash::check($validated['password'], $user->password)) {
-            return response()->json(['message' => 'Invalid credentials'], 401);
+    
+    
+        // Attempt to find user
+        $user = User::where('email', $validator['email'])->first();
+    
+        if (!$user || !Hash::check($validator['password'], $user->password)) {
+            return response()->json([
+                'message' => 'Invalid email or password.',
+            ], 401);
         }
-
+    
+        // Generate token
         $token = $this->tokenService->generateToken($user);
-
+    
+        // Return response
         return response()->json([
             'message' => 'Login successful',
             'token' => $token,

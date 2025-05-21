@@ -1,10 +1,10 @@
 <template>
-  <div class="modal fade" id="newWorkspaceModal" tabindex="-1" aria-labelledby="newWorkspaceModalLabel" aria-hidden="true">
+  <div v-if="showModal" class="modal fade show d-block" id="newWorkspaceModal" tabindex="-1" aria-labelledby="newWorkspaceModalLabel" aria-hidden="false">
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content">
         <div class="modal-header">
           <h5 class="modal-title" id="newWorkspaceModalLabel">Create New Workspace</h5>
-          <button type="button" class="btn-close" @click="closeModal" aria-label="Close"></button>
+          <button type="button" class="btn-close" @click="hide" aria-label="Close"></button>
         </div>
         <div class="modal-body">
           <form @submit.prevent="handleSubmit">
@@ -29,10 +29,37 @@
                 placeholder="Enter workspace description"
               ></textarea>
             </div>
+            <div class="mb-3">
+              <label for="workspaceLogo" class="form-label">Logo (Optional)</label>
+              <div class="d-flex align-items-center gap-2">
+                <div 
+                  v-if="logoPreview" 
+                  class="logo-preview rounded d-flex align-items-center justify-content-center"
+                >
+                  <img :src="logoPreview" alt="Logo Preview" class="img-fluid" />
+                </div>
+                <div v-else class="logo-placeholder rounded d-flex align-items-center justify-content-center">
+                  <i class="bi bi-building text-muted"></i>
+                </div>
+                <div class="flex-grow-1">
+                  <input
+                    type="file"
+                    class="form-control"
+                    id="workspaceLogo"
+                    accept="image/*"
+                    @change="handleLogoChange"
+                  >
+                </div>
+              </div>
+            </div>
             <div class="form-text mb-3">
               A workspace can contain multiple teamspaces and helps you organize your work at the highest level.
             </div>
-            <button type="submit" class="btn btn-primary w-100" :disabled="!workspaceName.trim()">
+            <div v-if="errorMessage" class="alert alert-danger mb-3">
+              {{ errorMessage }}
+            </div>
+            <button type="submit" class="btn btn-primary w-100" :disabled="!workspaceName.trim() || isLoading">
+              <span v-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status"></span>
               Create Workspace
             </button>
           </form>
@@ -40,45 +67,81 @@
       </div>
     </div>
   </div>
+  <div v-if="showModal" class="modal-backdrop fade show"></div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { useWorkspaceStore } from '../stores/workspaceStore'
-import * as bootstrap from 'bootstrap'
+import { useRouter } from 'vue-router'
+import axios from 'axios'
 
 const workspaceStore = useWorkspaceStore()
 const workspaceName = ref('')
 const workspaceDescription = ref('')
-const modalRef = ref(null)
-let modalInstance = null
+const workspaceLogo = ref('')
+const logoPreview = ref('')
+const isLoading = ref(false)
+const errorMessage = ref('')
+const showModal = ref(false)
 
-onMounted(() => {
-  modalRef.value = document.querySelector('#newWorkspaceModal')
-  if (modalRef.value) {
-    modalInstance = new bootstrap.Modal(modalRef.value)
-  }
-})
+// Show/hide methods
+const show = () => {
+  showModal.value = true
+  resetForm()
+}
 
-const closeModal = () => {
-  if (modalInstance) {
-    modalInstance.hide()
-    workspaceName.value = ''
-    workspaceDescription.value = ''
+const hide = () => {
+  showModal.value = false
+  resetForm()
+}
+
+const resetForm = () => {
+  workspaceName.value = ''
+  workspaceDescription.value = ''
+  workspaceLogo.value = ''
+  logoPreview.value = ''
+  errorMessage.value = ''
+}
+
+const handleLogoChange = (event) => {
+  const file = event.target.files[0]
+  if (file) {
+    const reader = new FileReader()
+    reader.onload = e => {
+      logoPreview.value = e.target.result
+      workspaceLogo.value = e.target.result
+    }
+    reader.readAsDataURL(file)
   }
 }
 
 const handleSubmit = async () => {
   try {
+    isLoading.value = true
+    errorMessage.value = ''
+    
     await workspaceStore.createWorkspace({
-      name: workspaceName.value.trim(),
-      description: workspaceDescription.value.trim()
+      name: workspaceName.value,
+      description: workspaceDescription.value,
+      logo: workspaceLogo.value
     })
-    closeModal()
+    hide()
+    
   } catch (error) {
-    console.error('Error creating workspace:', error)
+    errorMessage.value = error.response?.data?.message || error.message || 'Failed to create workspace'
+    
+    console.error(`Failed to create workspace: ${errorMessage.value}`)
+  } finally {
+    isLoading.value = false
   }
 }
+
+// Expose methods to parent components
+defineExpose({
+  show,
+  hide
+})
 </script>
 
 <style scoped>
@@ -92,5 +155,24 @@ const handleSubmit = async () => {
 
 .form-text {
   font-size: 0.875rem;
+}
+
+.logo-preview, 
+.logo-placeholder {
+  width: 48px;
+  height: 48px;
+  background-color: #f8f9fa;
+  border: 1px dashed #ccc;
+  overflow: hidden;
+}
+
+.logo-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.logo-placeholder i {
+  font-size: 1.5rem;
 }
 </style> 

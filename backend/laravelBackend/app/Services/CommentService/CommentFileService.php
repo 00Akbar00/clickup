@@ -2,6 +2,7 @@
 namespace App\Services\CommentService;
 
 use Illuminate\Support\Facades\Storage;
+use Str;
 
 class CommentFileService
 {
@@ -11,15 +12,17 @@ class CommentFileService
         $uploaded = [];
 
         foreach ($files as $file) {
-            $path = $file->store('public/comments');
+            $extension = $file->getClientOriginalExtension();
+            $uuidFilename = Str::uuid() . '.' . $extension;
+            $path = $file->storeAs('public/comments', $uuidFilename);
 
             $uploaded[] = [
-                'filename'      => basename($path),
-                'originalname'  => $file->getClientOriginalName(),
-                'mimetype'      => $file->getClientMimeType(),
-                'size'          => $file->getSize(),
-                'path'          => Storage::url($path),
-                'uploadedAt'    => now()->toISOString(),
+                'filename' => basename($path),
+                'originalname' => $file->getClientOriginalName(),
+                'mimetype' => $file->getClientMimeType(),
+                'size' => $file->getSize(),
+                'path' => Storage::url($path),
+                'uploadedAt' => now()->toISOString(),
             ];
         }
 

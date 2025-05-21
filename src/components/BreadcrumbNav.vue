@@ -77,6 +77,7 @@ import { useNavigationStore } from '../stores/navigationStore'
 import { useInboxStore } from '../stores/inboxStore'
 import { useSidebarStore } from '../stores/sidebarStore'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useTeamspaceStore } from '../stores/teamspaceStore'
 
 const route = useRoute()
 const router = useRouter()
@@ -84,6 +85,7 @@ const navigationStore = useNavigationStore()
 const inboxStore = useInboxStore()
 const sidebarStore = useSidebarStore()
 const workspaceStore = useWorkspaceStore()
+const teamspaceStore = useTeamspaceStore()
 
 const showToggle = computed(() => sidebarStore.isCollapsed)
 
@@ -150,7 +152,7 @@ watch(
     const listName = route.params.listName;
 
     if (teamspaceName) {
-      const teamspace = workspaceStore.teamspaces.find(
+      const teamspace = teamspaceStore.teamspaces.find(
         t => t.name === decodeURIComponent(teamspaceName)
       );
       if (teamspace) {
@@ -164,7 +166,7 @@ watch(
             navigationStore.setProject(project);
 
             if (listName) {
-              const list = project.lists.find(
+              const list = project.lists?.find(
                 l => l.name === decodeURIComponent(listName)
               );
               if (list) {

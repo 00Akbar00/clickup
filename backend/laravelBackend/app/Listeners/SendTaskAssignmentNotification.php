@@ -20,7 +20,7 @@ class SendTaskAssignmentNotification
             'recipient_id' => $assignee->user_id,
             'sender_id' => $assigner->user_id,
             'type' => 'task_assigned',
-            'message' => "You've been assigned to task '{$task->title}' by {$assigner->name}",
+            'message' => "You've been assigned to task '{$task->title}' by {$assigner->full_name}",
             'related_entity' => [
                 'type' => 'task',
                 'id' => $task->task_id

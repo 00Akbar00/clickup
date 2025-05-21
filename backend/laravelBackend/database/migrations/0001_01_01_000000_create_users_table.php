@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->string('full_name');
             $table->string('email')->unique();
             $table->string('password');
+            $table->boolean('is_part_of_workspace')->default(false);
             $table->string('profile_picture_url')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('reset_token')->nullable();

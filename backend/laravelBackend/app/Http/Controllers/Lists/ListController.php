@@ -1,93 +1,129 @@
 <?php
+
 namespace App\Http\Controllers\Lists;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateListRequest;
+use App\Services\VerifyValidationService\ValidationService;
 use App\Services\WorkspaceService\ListService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 use Exception;
 
 class ListController extends Controller
 {
-    protected $listService;
+    protected ListService $listService;
 
     public function __construct(ListService $listService)
     {
         $this->listService = $listService;
     }
 
-    // Create a new list 
-    public function createList(Request $request, $project_id)
+    /**
+     * Create a new list for a project.
+     */
+
+    public function createList(CreateListRequest $request, string $project_id): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 422);
-        }
-
         try {
-            $list = $this->listService->createList($project_id, $request->all());
-            return response()->json(['message' => 'List created successfully', 'list' => $list], 201);
+            $listData = $request->validated();
+
+            $list = $this->listService->createList($project_id, $listData);
+
+            return response()->json([
+                'message' => 'List created successfully.',
+                'list' => $list
+            ], 201);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return $this->handleException($e);
         }
     }
-
-    //Get lists 
-    public function getLists($project_id)
+    /**
+     * Get all lists for a specific project.
+     */
+    public function getLists(string $project_id): JsonResponse
     {
         try {
             $lists = $this->listService->getLists($project_id);
-            return response()->json(['lists' => $lists]);
+
+            return response()->json(['lists' => $lists], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return $this->handleException($e);
         }
     }
 
-    // Get list details 
-    public function getListDetails($list_id)
+    /**
+     * Get details of a specific list.
+     */
+    public function getListDetails(string $list_id): JsonResponse
     {
         try {
             $list = $this->listService->getListsData($list_id);
+
             return response()->json(['list' => $list], 200);
         } catch (Exception $e) {
-            $status = $e->getCode() ?: 500;
-            return response()->json(['error' => $e->getMessage()], $status);
+            return $this->handleException($e);
         }
     }
 
-    // Update list 
-    public function updateList(Request $request, $list_id)
+    /**
+     * Update a list's details.
+     */
+    public function updateList(Request $request, string $list_id): JsonResponse
     {
         $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
-            'status' => 'sometimes|in:active,archived',
+            'name' => ['sometimes', 'required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'status' => ['sometimes', 'required', 'in:active,archived'],
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['error' => $validator->errors()], 422);
+            return response()->json([
+                'message' => 'Validation errors.',
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         try {
-            $list = $this->listService->updateList($list_id, $request->only(['name', 'description', 'status']));
-            return response()->json(['message' => 'List updated successfully', 'list' => $list]);
+            $data = $request->only(['name', 'description', 'status']);
+            $list = $this->listService->updateList($list_id, $data);
+
+            return response()->json([
+                'message' => 'List updated successfully.',
+                'list' => $list
+            ], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return $this->handleException($e);
         }
     }
 
-    //Delete list
-    public function deleteList($list_id)
+    /**
+     * Delete a specific list.
+     */
+    public function deleteList(string $list_id): JsonResponse
     {
         try {
             $this->listService->deleteList($list_id);
-            return response()->json(['message' => 'List deleted successfully']);
+
+            return response()->json(['message' => 'List deleted successfully.'], 200);
         } catch (Exception $e) {
-            return response()->json(['error' => $e->getMessage()], 500);
+            return $this->handleException($e);
         }
+    }
+
+    /**
+     * Handle exceptions and format error response.
+     */
+    protected function handleException(Exception $e): JsonResponse
+    {
+        $code = $e->getCode();
+        $status = ($code >= 400 && $code < 600) ? $code : 500;
+
+        return response()->json([
+            'message' => 'An error occurred.',
+            'error' => $e->getMessage()
+        ], $status);
     }
 }

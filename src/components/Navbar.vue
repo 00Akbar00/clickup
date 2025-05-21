@@ -104,9 +104,11 @@ import { useRouter } from 'vue-router'
 import { Dropdown } from 'bootstrap'
 import 'bootstrap/dist/css/bootstrap.min.css'
 import 'bootstrap/dist/js/bootstrap.bundle.min.js'
+import { useWorkspaceStore } from '../stores/workspaceStore'
 import ProfileDrawer from './ProfileDrawer.vue'
 
 const router = useRouter()
+const workspaceStore = useWorkspaceStore()
 const dropdownButton = ref(null)
 let dropdownInstance = null
 const isProfileDrawerOpen = ref(false)
@@ -116,8 +118,19 @@ const searchQuery = ref('')
 const userName = computed(() => {
   const userData = localStorage.getItem('authUser')
   if (userData) {
-    const user = JSON.parse(userData)
-    return user.full_name || 'User'
+    try {
+      const auth = JSON.parse(userData)
+      // Handle different user data structures
+      if (auth.full_name) {
+        return auth.full_name
+      } else if (auth.user?.full_name) {
+        return auth.user.full_name
+      } else if (auth.name) {
+        return auth.name
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error)
+    }
   }
   return 'User'
 })
@@ -125,8 +138,17 @@ const userName = computed(() => {
 const userEmail = computed(() => {
   const userData = localStorage.getItem('authUser')
   if (userData) {
-    const user = JSON.parse(userData)
-    return user.email || ''
+    try {
+      const auth = JSON.parse(userData)
+      // Handle different user data structures
+      if (auth.email) {
+        return auth.email
+      } else if (auth.user?.email) {
+        return auth.user.email
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error)
+    }
   }
   return ''
 })
@@ -134,12 +156,30 @@ const userEmail = computed(() => {
 const profilePictureUrl = computed(() => {
   const userData = localStorage.getItem('authUser')
   if (userData) {
-    const user = JSON.parse(userData)
-    return user.profile_picture_url || null
+    try {
+      const auth = JSON.parse(userData)
+      // Handle different user data structures
+      if (auth.profile_picture_url) {
+        return auth.profile_picture_url
+      } else if (auth.user?.profile_picture_url) {
+        return auth.user.profile_picture_url
+      } else if (auth.avatar) {
+        return auth.avatar
+      }
+    } catch (error) {
+      console.error('Error parsing user data:', error)
+    }
   }
   return null
 })
-
+const authToken = computed(() => {
+  const userData = localStorage.getItem('authUser')
+  if (userData) {
+    const auth = JSON.parse(userData)
+    return auth.token || ''
+  }
+  return ''
+})
 // Methods
 const handleSearch = () => {
   // TODO: Implement search functionality
@@ -162,7 +202,15 @@ const handleSettings = () => {
 }
 
 const handleLogout = () => {
+  // Clear workspace data from store
+  workspaceStore.clearWorkspaces()
+  
+  // Remove auth data from localStorage
   localStorage.removeItem('authUser')
+  localStorage.removeItem('has_workspace')
+  localStorage.removeItem('authToken')
+  
+  // Redirect to auth page
   router.push('/auth')
 }
 

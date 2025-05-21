@@ -17,29 +17,29 @@ class ChangeStreamService {
     console.log("🟢 Redis Publisher connected");
   }
 
-  async watchComments() {
+  // async watchComments() {
    
-    const changeStream = Comment.watch();
+  //   const changeStream = Comment.watch();
   
-    changeStream.on("change", async (change) => {
-      if (change.operationType === "insert") {
-        const comment = change.fullDocument;
-        const channel = `comments:${comment.task_id}`;
+  //   changeStream.on("change", async (change) => {
+  //     if (change.operationType === "insert") {
+  //       const comment = change.fullDocument;
+  //       const channel = `comments:${comment.task_id}`;
 
-        try {
-          await this.redisPublisher.publish(channel, JSON.stringify(comment));
-          console.log(`📤 Published comment to ${channel}`);
-        } catch (err) {
-          console.error("❌ Failed to publish comment:", err);
-        }
-      }
-    });
+  //       try {
+  //          a
+  //         console.log(`📤 Published comment to ${channel}`);
+  //       } catch (err) {
+  //         console.error("❌ Failed to publish comment:", err);
+  //       }
+  //     }
+  //   });
 
-    changeStream.on("error", (error) => {
-      console.error("❌ Change Stream error:", error);
+  //   changeStream.on("error", (error) => {
+  //     console.error("❌ Change Stream error:", error);
 
-    });
-  }
+  //   });
+  // }
 }
 
 module.exports = new ChangeStreamService();

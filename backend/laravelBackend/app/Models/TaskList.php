@@ -37,4 +37,5 @@ class TaskList extends Model
     {
         return $this->hasMany(Task::class, 'list_id');
     }
+    
 }

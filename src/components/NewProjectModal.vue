@@ -1,85 +1,176 @@
 <template>
-  <div class="modal fade" id="newProjectModal" ref="modalRef" tabindex="-1" data-bs-backdrop="static" @keydown="handleKeydown">
+  <div v-if="showModal" class="modal fade show d-block" tabindex="-1" aria-hidden="false">
     <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content bg-white shadow-sm border">
-        <div class="modal-header py-3">
+      <div class="modal-content">
+        <div class="modal-header">
           <h5 class="modal-title">Create New Project</h5>
           <button type="button" class="btn-close" @click="hide" aria-label="Close"></button>
         </div>
-        <div class="modal-body py-4">
-          <input
-            type="text"
-            class="form-control"
-            v-model="projectName"
-            placeholder="Enter project name"
-            @keyup.enter="createProject"
-            ref="projectInput"
-          >
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="projectName" class="form-label">Project Name *</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="projectName"
+              v-model="projectName"
+              placeholder="Enter project name"
+              @keyup.enter="createProject"
+              :disabled="isLoading"
+            >
+          </div>
+          
+          <div class="mb-3">
+            <label for="projectDescription" class="form-label">Description</label>
+            <textarea
+              class="form-control"
+              id="projectDescription"
+              v-model="projectDescription"
+              placeholder="Describe this project's purpose"
+              rows="2"
+              :disabled="isLoading"
+            ></textarea>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label d-block">Visibility</label>
+            <div class="form-check form-check-inline">
+              <input 
+                class="form-check-input" 
+                type="radio" 
+                name="visibility" 
+                id="visibilityPublic" 
+                value="public" 
+                v-model="visibility"
+                :disabled="isLoading"
+              >
+              <label class="form-check-label" for="visibilityPublic">Public</label>
+            </div>
+            <div class="form-check form-check-inline">
+              <input 
+                class="form-check-input" 
+                type="radio" 
+                name="visibility" 
+                id="visibilityPrivate" 
+                value="private" 
+                v-model="visibility"
+                :disabled="isLoading"
+              >
+              <label class="form-check-label" for="visibilityPrivate">Private</label>
+            </div>
+          </div>
         </div>
         <div class="modal-footer">
           <button 
             type="button" 
-            class="btn btn-primary w-100" 
-            @click="createProject"
-            :disabled="!projectName.trim()"
-          >Create Project</button>
+            class="btn btn-primary" 
+            @click="createProject" 
+            :disabled="!projectName.trim() || isLoading"
+          >
+            <span v-if="isLoading" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+            {{ isLoading ? 'Creating...' : 'Create Project' }}
+          </button>
         </div>
       </div>
     </div>
   </div>
+  <div v-if="showModal" class="modal-backdrop fade show"></div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Modal } from 'bootstrap'
 import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useProjectStore } from '../stores/projectStore'
+import { useTeamspaceStore } from '../stores/teamspaceStore'
+import { createToast } from 'mosha-vue-toastify'
 
 const workspaceStore = useWorkspaceStore()
-const modalRef = ref(null)
-const projectName = ref('')
-const projectInput = ref(null)
-let modalInstance = null
+const projectStore = useProjectStore()
+const teamspaceStore = useTeamspaceStore()
 
-onMounted(() => {
-  // Initialize modal instance
-  modalInstance = new Modal(modalRef.value)
-})
+const showModal = ref(false)
+const projectName = ref('')
+const projectDescription = ref('')
+const visibility = ref('public')
+const isLoading = ref(false)
+
+// Modal display functions
+const show = () => {
+  showModal.value = true
+  projectName.value = '' // Reset form
+  projectDescription.value = ''
+  visibility.value = 'public'
+}
 
 const hide = () => {
-  modalInstance?.hide()
-  projectName.value = ''
+  showModal.value = false
+  projectName.value = '' // Reset form
+  projectDescription.value = ''
+  visibility.value = 'public'
 }
 
-const createProject = () => {
-  if (projectName.value.trim()) {
-    const newId = Math.max(0, ...workspaceStore.teamspaces.flatMap(t => t.projects?.map(p => p.id) || []), 0) + 1
+const createProject = async () => {
+  if (!projectName.value.trim()) return
+  
+  const teamspaceId = window.activeTeamspace?.id
+  if (!teamspaceId) {
+    createToast('No active team selected', {
+      position: 'top-right',
+      type: 'danger',
+      timeout: 3000
+    })
+    return
+  }
+  
+  isLoading.value = true
+  
+  try {
+    // Create a loading toast
+    const loadingToast = createToast('Creating project...', {
+      position: 'top-right',
+      type: 'info',
+      showIcon: true,
+      swipeClose: false,
+      timeout: -1
+    })
     
     const newProject = {
-      id: newId,
       name: projectName.value.trim(),
-      lists: []
+      description: projectDescription.value.trim(),
+      visibility: visibility.value
     }
     
-    const teamspaceId = window.activeTeamspace?.id
-    if (teamspaceId) {
-      workspaceStore.addProject(teamspaceId, newProject)
-      modalInstance?.hide()
-      projectName.value = ''
-    } else {
-      console.error('No active teamspace found')
-    }
-  }
-}
-
-const handleKeydown = (event) => {
-  if (event.key === 'Escape') {
-    hide()
+    // Create the project using projectStore instead of workspaceStore
+    await projectStore.addProject(teamspaceId, newProject)
+    
+    // Refresh the projects list from the API using teamspaceStore
+    await teamspaceStore.fetchTeamspaceProjects(teamspaceId)
+    
+    // Remove loading toast and show success toast
+    loadingToast.close()
+    createToast('Project created successfully!', {
+      position: 'top-right',
+      type: 'success',
+      timeout: 3000
+    })
+    
+    hide() // Close the modal
+  } catch (error) {
+    console.error('Failed to create project:', error)
+    createToast(`Failed to create project: ${error.message || 'Unknown error'}`, {
+      position: 'top-right',
+      type: 'danger',
+      timeout: 5000
+    })
+  } finally {
+    isLoading.value = false
   }
 }
 
 // Expose methods to parent components
 defineExpose({
   hide,
+  show,
   createProject
 })
 </script>

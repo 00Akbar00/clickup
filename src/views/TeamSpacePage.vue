@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useWorkspaceStore } from '../stores/workspaceStore';
+import { useTeamspaceStore } from '../stores/teamspaceStore';
 import * as bootstrap from 'bootstrap';
 import { Pie } from 'vue-chartjs';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
@@ -12,10 +13,11 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 const route = useRoute();
 const router = useRouter();
 const workspaceStore = useWorkspaceStore();
+const teamspaceStore = useTeamspaceStore();
 const navigationStore = useNavigationStore();
 
 const teamspace = computed(() => {
-  return workspaceStore.teamspaces.find(t => t.name === decodeURIComponent(route.params.teamspaceName));
+  return teamspaceStore.teamspaces.find(t => t.name === decodeURIComponent(route.params.teamspaceName));
 });
 
 const projects = computed(() => {
@@ -219,8 +221,8 @@ watch(teamspace, (newTeamspace) => {
               </div>
             </div>
           </div>
-          <div v-else class="empty-state text-center py-4">
-            <p class="mb-0">No recent activity</p>
+          <div v-else class="empty-state  d-flex align-items-center justify-content-center h-100">
+            <p class="">No recent activity</p>
           </div>
         </div>
       </div>
@@ -317,8 +319,8 @@ watch(teamspace, (newTeamspace) => {
               </div>
             </div>
           </div>
-          <div v-else class="empty-state text-center py-4">
-            <p class="mb-0">No lists available</p>
+          <div v-else class="empty-state d-flex align-items-center justify-content-center h-100">
+            <p class="">No lists available</p>
           </div>
         </div>
       </div>

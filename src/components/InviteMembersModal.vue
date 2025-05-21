@@ -3,10 +3,19 @@
     <div class="modal-dialog modal-dialog-centered">
       <div class="modal-content bg-white shadow-sm border">
         <div class="modal-header py-3">
-          <h5 class="modal-title">Invite Members</h5>
+          <div>
+            <h5 class="modal-title">Invite Members</h5>
+            <div v-if="workspaceStore.currentWorkspace" class="text-muted small">
+              to {{ workspaceStore.currentWorkspace.name }}
+            </div>
+          </div>
           <button type="button" class="btn-close" @click="hide" aria-label="Close"></button>
         </div>
         <div class="modal-body py-4">
+          <div v-if="linkError" class="alert alert-danger mb-3">
+            {{ linkError }}
+          </div>
+          
           <div class="mb-3">
             <label for="email" class="form-label">Email Addresses</label>
             <div class="email-input-container">
@@ -18,12 +27,13 @@
                 placeholder="Enter email address and press Enter"
                 @keydown.enter.prevent="addEmail"
                 @keydown.backspace="handleBackspace"
+                :disabled="isLoading"
               >
             </div>
             <div class="email-chips mt-2">
               <div v-for="(email, index) in emailList" :key="index" class="email-chip">
                 <span class="email-text">{{ email }}</span>
-                <button class="remove-email" @click="removeEmail(index)">
+                <button class="remove-email" @click="removeEmail(index)" :disabled="isLoading">
                   <i class="bi bi-x"></i>
                 </button>
               </div>
@@ -37,6 +47,7 @@
               v-model="message" 
               rows="3"
               placeholder="Add a personal message to your invitation"
+              :disabled="isLoading"
             ></textarea>
           </div>
         </div>
@@ -45,8 +56,12 @@
             type="button" 
             class="btn btn-primary w-100" 
             @click="sendInvites"
-            :disabled="emailList.length === 0"
-          >Send Invites</button>
+            :disabled="emailList.length === 0 || isLoading || !inviteGenerated"
+          >
+            <span v-if="isGeneratingInvite" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            <span v-else-if="isLoading" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+            {{ isGeneratingInvite ? 'Preparing...' : (isLoading ? 'Sending...' : 'Send Invites') }}
+          </button>
         </div>
       </div>
     </div>
@@ -54,14 +69,34 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Modal } from 'bootstrap'
+import axios from 'axios'
+import { useWorkspaceStore } from '../stores/workspaceStore'
+import { useRouter } from 'vue-router'
 
+const workspaceStore = useWorkspaceStore()
 const modalRef = ref(null)
 const currentEmail = ref('')
 const emailList = ref([])
 const message = ref('')
 let modalInstance = null
+const inviteLink = ref('')
+const inviteToken = ref('')
+const isLoading = ref(false)
+const isGeneratingInvite = ref(false)
+const linkError = ref(null)
+const inviteGenerated = ref(false)
+
+// Add router
+const router = useRouter()
+
+// Get current workspace ID
+const currentWorkspaceId = computed(() => {
+  const workspace = workspaceStore.currentWorkspace
+  if (!workspace) return null
+  return workspace.id || workspace._id || workspace.workspace_id
+})
 
 onMounted(() => {
   modalInstance = new Modal(modalRef.value)
@@ -96,20 +131,200 @@ const hide = () => {
   emailList.value = []
   currentEmail.value = ''
   message.value = ''
+  inviteLink.value = ''
+  inviteToken.value = ''
+  linkError.value = null
+  inviteGenerated.value = false
 }
 
-const sendInvites = () => {
-  if (emailList.value.length > 0) {
-    console.log('Sending invites to:', emailList.value)
-    console.log('Message:', message.value)
-    hide()
+const getInviteLink = async () => {
+  if (!currentWorkspaceId.value) {
+    linkError.value = 'No workspace selected'
+    console.error('No workspace ID available')
+    return false
   }
+  
+  console.log('Generating invite link for workspace:', currentWorkspaceId.value)
+  isGeneratingInvite.value = true
+  linkError.value = null
+  
+  try {
+    // Get auth token from localStorage
+    const token = localStorage.getItem('authToken') || 
+                  (localStorage.getItem('authUser') ? 
+                   JSON.parse(localStorage.getItem('authUser')).token : null)
+    
+    if (!token) {
+      console.error('No authentication token found')
+      throw new Error('Authentication token not found. Please log in again.')
+    }
+    
+    // API call with empty body as per the Postman collection
+    const response = await axios.post(
+      `http://localhost/api/workspaces/${currentWorkspaceId.value}/invites/link`,
+      {}, // Empty body
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    )
+    
+    console.log('Invite link response status:', response.status)
+    console.log('Invite link response data:', response.data)
+    
+    if (response.data && response.data.data && response.data.data.invite_link) {
+      inviteLink.value = response.data.data.invite_link
+      inviteGenerated.value = true
+      return true
+    } else if (response.data && response.data.invite_link) {
+      inviteLink.value = response.data.invite_link
+      inviteGenerated.value = true
+      return true
+    } else if (response.data && response.data.invite_url) {
+      // Handle alternative response format
+      inviteLink.value = response.data.invite_url
+      inviteGenerated.value = true
+      return true
+    } else {
+      console.error('Invalid response format:', response.data)
+      linkError.value = 'Could not generate invitation link. Please try again.'
+      return false
+    }
+  } catch (error) {
+    console.error('Error fetching invite link:', error)
+    
+    // Detailed error logging
+    if (error.response) {
+      console.error('Response status:', error.response.status)
+      console.error('Response data:', error.response.data)
+      console.error('Response headers:', error.response.headers)
+    }
+    
+    // Check for authentication error
+    if (error.response && error.response.status === 401) {
+      linkError.value = 'Unauthorized: Please log in again to generate an invite link'
+    } else {
+      linkError.value = error.response?.data?.message || error.message || 'Failed to generate invite link'
+    }
+    
+    return false
+  } finally {
+    isGeneratingInvite.value = false
+  }
+}
+
+const sendInvites = async () => {
+  if (emailList.value.length === 0) return;
+  
+  isLoading.value = true;
+  
+  try {
+    // Get auth token from localStorage
+    const token = localStorage.getItem('authToken') || 
+                  (localStorage.getItem('authUser') ? 
+                   JSON.parse(localStorage.getItem('authUser')).token : null)
+    
+    if (!token) {
+      console.error('No authentication token found')
+      throw new Error('Authentication token not found. Please log in again.')
+    }
+    
+    // Prepare request payload
+    const payload = {
+      emails: emailList.value,
+      role: "member"
+    };
+    
+    // Add message if provided
+    if (message.value.trim()) {
+      payload.message = message.value.trim();
+    }
+    
+    // Make API call to send invites
+    const response = await axios.post(
+      `http://localhost/api/workspaces/${currentWorkspaceId.value}/invites/send`,
+      payload,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      }
+    );
+    
+    console.log('Invite send response status:', response.status);
+    console.log('Invite send response data:', response.data);
+    
+    // Display success message
+    alert('Invitations sent successfully!');
+    
+    // Close the modal after sending
+    hide();
+    
+  } catch (error) {
+    console.error('Error sending invites:', error);
+    
+    // Detailed error logging
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+      console.error('Response headers:', error.response.headers);
+    }
+    
+    // Display error message
+    linkError.value = error.response?.data?.message || error.message || 'Failed to send invites';
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+// Add function to check authentication status
+const checkAuthStatus = () => {
+  const token = localStorage.getItem('authToken') || 
+                (localStorage.getItem('authUser') ? 
+                 JSON.parse(localStorage.getItem('authUser')).token : null)
+  
+  return !!token
 }
 
 // Expose methods to parent components
 defineExpose({
-  hide,
-  sendInvites
+  show: async () => {
+    // Check if user is authenticated
+    if (!checkAuthStatus()) {
+      console.error('Authentication required')
+      console.error('Please log in to invite members')
+      
+      // Redirect to login page
+      router.push('/auth')
+      return
+    }
+    
+    // Check if a workspace is selected
+    if (!currentWorkspaceId.value) {
+      console.error('No workspace selected')
+      console.error('Please select a workspace first')
+      return
+    }
+    
+    // Reset form when showing the modal
+    emailList.value = []
+    currentEmail.value = ''
+    message.value = ''
+    linkError.value = null
+    inviteGenerated.value = false
+    
+    // Show the modal
+    modalInstance?.show()
+    
+    // Generate invite link when the modal is opened
+    await getInviteLink()
+  },
+  hide
 })
 </script>
 
@@ -201,5 +416,10 @@ defineExpose({
 
 .email-input-container {
   position: relative;
+}
+
+.alert-danger {
+  font-size: 0.9rem;
+  padding: 0.75rem;
 }
 </style> 
