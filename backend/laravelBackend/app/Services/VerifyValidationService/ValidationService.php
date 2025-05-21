@@ -44,7 +44,7 @@ class ValidationService
         $rules = [];
         $rules['visibility'] = ['nullable', 'string', Rule::in(['public', 'private', 'team'])];
         $rules['color_code'] = ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'];
-        
+
         return $rules;
     }
     public static function emailSignupRules(): array
@@ -89,9 +89,31 @@ class ValidationService
             $rules[] = 'confirmed';
         }
 
-
-
         return $rules;
     }
 
+    public static function workspaceRules(): array
+    {
+        return [
+            'name' => [
+                'required',
+                'string',
+                'max:25',
+                new ContainsLetters,
+                new ValidNameCharacters,
+            ],
+            'description' => [
+                'nullable',
+                'string',
+                'max:255',
+                new ValidDescriptionCharacters,
+            ],
+            'logo' => [
+                'nullable',
+                'file',
+                'mimes:jpeg,jpg,png',
+                'max:2048'
+            ]
+        ];
+    }
 }
