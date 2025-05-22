@@ -39,6 +39,12 @@
                 : "Welcome back!"
             }}
           </h3>
+          
+          <!-- Invitation indicator -->
+          <div v-if="hasInvitation" class="alert alert-info mt-2 mb-0 py-2 small">
+            <i class="bi bi-envelope me-1"></i>
+            You've been invited to join a workspace
+          </div>
         </div>
 
         <!-- Login/Signup Form -->
@@ -226,6 +232,11 @@ const router = useRouter();
 
 const route = useRoute();
 
+// Accept inviteToken as a prop
+const props = defineProps({
+  inviteToken: String
+});
+
 const isSignup = ref(false);
 
 const isForgotPassword = ref(false);
@@ -333,8 +344,11 @@ const handleAuth = async () => {
         ...response.data.user,
         token: response.data.token
       };
-toast.showToast("Signup successful! Please log in.", "success");
-isSignup.value = false;
+isSignup.value = false;      
+      // Save auth data to localStorage
+      localStorage.setItem("authUser", JSON.stringify(userData));
+      localStorage.setItem("authToken", response.data.token);
+
       // Process invitation if available
       if (hasInvitation.value && invitationDetails.value) {
         try {
@@ -387,7 +401,7 @@ isSignup.value = false;
   } catch (error) {
     loading.value = false;
     console.error("Authentication Error:", error.response?.data || error);
-    alert(error.response?.data?.message || "Authentication failed");
+    toast.showToast(error.response?.data?.message || "Authentication failed", "danger");
   } finally {
     loading.value = false;
   }

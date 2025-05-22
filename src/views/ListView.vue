@@ -360,6 +360,8 @@ const fetchListTasks = async () => {
     // Fetch tasks from the API
     const tasks = await taskStore.fetchTasksForList(listId.value)
     
+    console.log(`Fetched ${tasks.length} tasks for list: ${list.value?.name}`)
+    
     // The fetchTasksForList method already updates the tasks in the store,
     // but we'll refresh our local reference just to be sure
     if (list.value) {

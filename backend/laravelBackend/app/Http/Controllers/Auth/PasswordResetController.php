@@ -60,11 +60,12 @@ class PasswordResetController extends Controller
     //Reset Password
     public function resetPassword(Request $request, $token)
     {
-        $validation = ValidationService::passwordRules();
-        $request->validate(
-            $validation['rules'],     
-            $validation['messages']   
-        );
+        $passwordValidation = ValidationService::passwordRules(true);
+        $rules = ['password' => $passwordValidation['rules']];
+        $messages =  $passwordValidation['messages'];
+        // Validate the request (excluding avatar validation)
+        $request->validate($rules, $messages);
+
 
         $user = User::where('reset_token', $token)->first();
 

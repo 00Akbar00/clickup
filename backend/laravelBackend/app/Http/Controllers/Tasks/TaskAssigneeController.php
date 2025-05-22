@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Tasks;
 use App\Http\Controllers\Controller;
 use App\Models\Team;
 use App\Models\TeamMember;
+use DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
@@ -14,63 +15,101 @@ use App\Models\WorkspaceMember;
 use App\Models\TaskAssignee;
 use App\Events\TaskAssigned;
 use App\Events\TaskUnassigned;
+use App\Services\VerifyValidationService\ValidationService;
 
 class TaskAssigneeController extends Controller
 {
     // Assign a user to a task
     public function assignTask(Request $request, $workspace_id, $task_id)
     {
-        $request->validate([
-            'team_member_id' => 'required|uuid|exists:team_members,team_member_id',
-        ]);
-
-        $task = Task::with('listTask.project.team')->where('task_id', $task_id)->firstOrFail();
-        // Validate workspace via nested relation
+        $rulesData = ValidationService::taskAssigneeRules();
+        $validator = validator($request->all(), $rulesData['rules'], $rulesData['messages']);
+    
+        if ($validator->fails()) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Validation error',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+    
+        $task = Task::with('list.project.team')->where('task_id', $task_id)->firstOrFail();
         $team = $task->list->project->team;
-
+    
         if ($team->workspace_id !== $workspace_id) {
-            return response()->json(['error' => 'Task does not belong to this workspace'], 403);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Task does not belong to this workspace'
+            ], 403);
         }
-
-        // Ensure team member belongs to this team
-        $teamMember = TeamMember::with('user')
-            ->where('team_member_id', $request->team_member_id)
+    
+        // Get all valid team members at once
+        $teamMemberIds = is_array($request->team_member_id) 
+            ? $request->team_member_id 
+            : [$request->team_member_id];
+    
+        $teamMembers = TeamMember::with('user')
+            ->whereIn('team_member_id', $teamMemberIds)
             ->where('team_id', $team->team_id)
-            ->firstOrFail();
-        // dd($teamMember);
-
-
-        // Check if already assigned via team_member_id
-        $alreadyAssigned = TaskAssignee::where('task_id', $task_id)
-            ->where('team_member_id', $teamMember->team_member_id) // Use the actual value from teamMember
-            ->exists();
-
-        if ($alreadyAssigned) {
-            return response()->json(['message' => 'User is already assigned to this task'], 409);
+            ->get();
+    
+        if ($teamMembers->count() !== count($teamMemberIds)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'One or more team members not found in this team'
+            ], 404);
         }
-
-        // Debug check
-        if (empty($teamMember->team_member_id)) {
-            return response()->json(['error' => 'Invalid team member ID'], 400);
+    
+        // Check for existing assignments
+        $existingAssignments = TaskAssignee::where('task_id', $task_id)
+            ->whereIn('team_member_id', $teamMemberIds)
+            ->pluck('team_member_id')
+            ->toArray();
+    
+        if (!empty($existingAssignments)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Some users are already assigned to this task',
+                'existing_assignments' => $existingAssignments
+            ], 409);
         }
-
-        // Create assignment using team_member_id
-        $assignmentData = [
-            'task_assignee_id' => Str::uuid(),
-            'task_id' => $task_id,
-            'team_member_id' => $teamMember->team_member_id,
-            'assigned_by' => Auth::id(),
-            'assigned_at' => now(),
-        ];
-
-        $taskAssignee = TaskAssignee::create($assignmentData);
-
-        event(new TaskAssigned(
-            $task,
-            $teamMember->user->user_id,
-            Auth::id(),
-        ));
-        return response()->json(['message' => 'User assigned to task successfully', 'task assigned' => $taskAssignee]);
+    
+        DB::beginTransaction();
+        try {
+            $assignments = [];
+            foreach ($teamMembers as $teamMember) {
+                $assignment = TaskAssignee::create([
+                    'task_assignee_id' => Str::uuid(),
+                    'task_id' => $task_id,
+                    'team_member_id' => $teamMember->team_member_id,
+                    'assigned_by' => Auth::id(),
+                    'assigned_at' => now(),
+                ]);
+    
+                event(new TaskAssigned(
+                    $task,
+                    $teamMember->user->user_id,
+                    Auth::id(),
+                ));
+    
+                $assignments[] = $assignment;
+            }
+    
+            DB::commit();
+    
+            return response()->json([
+                'status' => 'success',
+                'message' => count($assignments) . ' users assigned to task successfully',
+                'data' => $assignments
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to assign users to task',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
 

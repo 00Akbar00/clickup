@@ -8,7 +8,6 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Tests\TestCase;
-// No need for Carbon here unless you were testing timestamps within the service
 
 class AvatarServiceTest extends TestCase
 {
@@ -17,7 +16,7 @@ class AvatarServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        Storage::fake('public'); // Use fake public disk for all tests in this class
+        Storage::fake('public'); 
         $this->avatarService = new AvatarService();
     }
 
@@ -30,29 +29,23 @@ class AvatarServiceTest extends TestCase
 
         $request = new Request();
         $request->files->set('profile_picture_url', $fakeFile);
-        // No need to set 'full_name' for this path, but good to be aware
+        
 
         $storedPath = $this->avatarService->generate($request);
 
         $this->assertNotNull($storedPath);
         $this->assertIsString($storedPath);
-
-        // Expected filename pattern: originalName_uuid.extension
-        // Example: avatars/test_avatar_xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx.jpg
         $this->assertTrue(Str::startsWith($storedPath, 'avatars/'), "Path should start with 'avatars/'. Path: " . $storedPath);
         $this->assertTrue(Str::endsWith($storedPath, '.' . $extension), "Path should end with '.{$extension}'. Path: " . $storedPath);
 
         $filenameInPath = basename($storedPath);
         $this->assertTrue(Str::startsWith($filenameInPath, $originalFileName . '_'), "Filename should start with original name + underscore. Filename: " . $filenameInPath);
-
-        // Check that a UUID-like string is part of the filename (36 chars for UUID)
-        // originalName_ (length) + 36 (UUID) + . (1) + extension (length)
         $expectedUuidPartLength = 36;
         $nameAndUnderscoreLength = Str::length($originalFileName . '_');
         $extensionLength = Str::length($extension);
         $uuidPart = Str::substr($filenameInPath, $nameAndUnderscoreLength, $expectedUuidPartLength);
 
-        // A loose check for UUID format (e.g., contains hyphens, primarily checking length)
+        
         $this->assertEquals($expectedUuidPartLength, Str::length($uuidPart), "UUID part of the filename seems incorrect. Filename: " . $filenameInPath);
         $this->assertMatchesRegularExpression('/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/', $uuidPart, "Filename does not contain a valid UUID part.");
 

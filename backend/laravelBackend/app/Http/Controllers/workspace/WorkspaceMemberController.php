@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Workspace;
 
 use App\Http\Controllers\Controller;
+use App\Services\VerifyValidationService\ValidationService;
+use App\Http\Requests\AddWorkspaceMemberRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -10,15 +12,16 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use App\Models\Workspace;
 use App\Models\WorkspaceMember;
+use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\TeamMember;
-use Str;
+
 
 class WorkspaceMemberController extends Controller
 {
     /**
      * Get all members of a workspace with their roles
-     * 
+     *
      * @param Request $request
      * @param string $workspaceId (UUID)
      * @return \Illuminate\Http\JsonResponse
@@ -86,27 +89,27 @@ class WorkspaceMemberController extends Controller
     {
         // First verify the workspace exists (optional but recommended)
         $workspaceExists = Workspace::where('workspace_id', $workspaceId)->exists();
-        
+
         if (!$workspaceExists) {
             return response()->json([
                 'success' => false,
                 'message' => 'Workspace not found',
             ], 404);
         }
-    
+
         // Then find the member within that workspace
         $member = WorkspaceMember::with(['user', 'workspace'])
             ->where('workspace_member_id', $memberId)
             ->where('workspace_id', $workspaceId)
             ->first();
-    
-        if (!$member) { 
+
+        if (!$member) {
             return response()->json([
                 'success' => false,
                 'message' => 'Workspace member not found in this workspace',
             ], 404);
         }
-    
+
         return response()->json([
             'success' => true,
             'data' => [
@@ -126,33 +129,27 @@ class WorkspaceMemberController extends Controller
 
     /**
      * Manually add a user to a workspace
-     * 
+     *
      * @param Request $request
      * @param string $workspaceId (UUID)
      * @return \Illuminate\Http\JsonResponse
      */
-    public function addMember(Request $request, $workspaceId)
+    public function addMember(AddWorkspaceMemberRequest $request, $workspaceId)
     {
         try {
-            // Validate input
-            $validator = Validator::make(array_merge($request->all(), ['workspace_id' => $workspaceId]), [
-                'workspace_id' => 'required|uuid|exists:workspaces,workspace_id',
-                'email' => 'required|email|exists:users,email',
-                'role' => 'required|in:owner,admin,member,guest',
-            ]);
-
-            if ($validator->fails()) {
+            // Workspace existence check
+            if (!Workspace::where('workspace_id', $workspaceId)->exists()) {
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
+                    'message' => 'The selected workspace does not exist.',
+                    'errors' => [
+                        'workspace_id' => ['The selected workspace does not exist.']
+                    ]
+                ], 404);
             }
 
-            // Get the workspace
-            $workspace = Workspace::where('workspace_id', $workspaceId)->firstOrFail();
+            $workspace = Workspace::where('workspace_id', $workspaceId)->first();
 
-            // Check if the authenticated user has permission to add members
             $authMember = WorkspaceMember::where('workspace_id', $workspaceId)
                 ->where('user_id', Auth::id())
                 ->first();
@@ -164,10 +161,8 @@ class WorkspaceMemberController extends Controller
                 ], 403);
             }
 
-            // Get the user to add
             $userToAdd = User::where('email', $request->email)->firstOrFail();
 
-            // Check if user is already a member
             $existingMember = WorkspaceMember::where('workspace_id', $workspaceId)
                 ->where('user_id', $userToAdd->user_id)
                 ->exists();
@@ -179,7 +174,6 @@ class WorkspaceMemberController extends Controller
                 ], 409);
             }
 
-            // Prevent adding a member with owner role if not current owner
             if ($request->role === 'owner' && $authMember->role !== 'owner') {
                 return response()->json([
                     'status' => 'error',
@@ -187,7 +181,6 @@ class WorkspaceMemberController extends Controller
                 ], 403);
             }
 
-            // Add the member
             $member = WorkspaceMember::create([
                 'workspace_member_id' => Str::uuid(),
                 'workspace_id' => $workspaceId,
@@ -220,9 +213,10 @@ class WorkspaceMemberController extends Controller
     }
 
 
+
     /**
      * Update a member's role in the workspace
-     * 
+     *
      * @param Request $request
      * @param string $workspaceId (UUID)
      * @param string $memberId (UUID of workspace_member_id)
@@ -231,16 +225,17 @@ class WorkspaceMemberController extends Controller
     public function updateMemberRole(Request $request, $workspaceId, $memberId)
     {
         DB::beginTransaction();
+
         try {
-            // Validate input
-            $validator = Validator::make(array_merge($request->all(), [
+            // Prepare data for validation
+            $data = array_merge($request->all(), [
                 'workspace_id' => $workspaceId,
-                'member_id' => $memberId
-            ]), [
-                'workspace_id' => 'required|uuid|exists:workspaces,workspace_id',
-                'member_id' => 'required|uuid|exists:workspace_members,workspace_member_id',
-                'role' => 'required|in:owner,member',
+                'member_id' => $memberId,
             ]);
+
+            // Get validation rules from service
+            $validation = ValidationService::updateWorkspaceMemberRoleRules();
+            $validator = Validator::make($data, $validation['rules'], $validation['messages']);
 
             if ($validator->fails()) {
                 return response()->json([
@@ -250,17 +245,16 @@ class WorkspaceMemberController extends Controller
                 ], 422);
             }
 
-            // Get the member to update
+            // Fetch the member to update
             $memberToUpdate = WorkspaceMember::where('workspace_member_id', $memberId)
                 ->where('workspace_id', $workspaceId)
                 ->firstOrFail();
 
-            // Check auth user's permissions
+            // Check if current user has permission
             $authMember = WorkspaceMember::where('workspace_id', $workspaceId)
                 ->where('user_id', Auth::id())
                 ->first();
 
-            // Only owners can change roles
             if (!$authMember || $authMember->role !== 'owner') {
                 return response()->json([
                     'status' => 'error',
@@ -268,7 +262,7 @@ class WorkspaceMemberController extends Controller
                 ], 403);
             }
 
-            // Prevent last owner demotion
+            // Prevent demoting last owner
             if ($memberToUpdate->role === 'owner' && $request->role === 'member') {
                 $ownerCount = WorkspaceMember::where('workspace_id', $workspaceId)
                     ->where('role', 'owner')
@@ -282,15 +276,14 @@ class WorkspaceMemberController extends Controller
                 }
             }
 
-            // Handle ownership transfer
+            // If upgrading to owner, demote current owners
             if ($request->role === 'owner' && $memberToUpdate->role !== 'owner') {
-                // Demote current owner(s)
                 WorkspaceMember::where('workspace_id', $workspaceId)
                     ->where('role', 'owner')
                     ->update(['role' => 'member']);
             }
 
-            // Update the role
+            $previousRole = $memberToUpdate->role;
             $memberToUpdate->update(['role' => $request->role]);
 
             DB::commit();
@@ -301,12 +294,13 @@ class WorkspaceMemberController extends Controller
                 'data' => [
                     'member_id' => $memberId,
                     'new_role' => $request->role,
-                    'previous_role' => $memberToUpdate->getOriginal('role')
+                    'previous_role' => $previousRole
                 ]
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error("Role update failed: " . $e->getMessage());
+
             return response()->json([
                 'status' => 'error',
                 'message' => 'Failed to update role',
@@ -317,7 +311,7 @@ class WorkspaceMemberController extends Controller
 
     /**
      * Remove a member from the workspace
-     * 
+     *
      * @param Request $request
      * @param string $workspaceId (UUID)
      * @param string $memberId (UUID of workspace_member_id)
@@ -411,7 +405,7 @@ class WorkspaceMemberController extends Controller
 
     /**
      * Current user leaves the workspace
-     * 
+     *
      * @param Request $request
      * @param string $workspaceId (UUID)
      * @return \Illuminate\Http\JsonResponse

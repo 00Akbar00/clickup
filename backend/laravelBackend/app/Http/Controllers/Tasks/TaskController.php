@@ -2,6 +2,7 @@
 namespace App\Http\Controllers\Tasks;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateTaskRequest;
 use App\Services\WorkspaceService\TaskService;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -15,18 +16,12 @@ class TaskController extends Controller
         $this->taskService = $taskService;
     }
 
-    public function createTask(Request $request, $list_id)
+    public function createTask(CreateTaskRequest $request, $list_id)
     {
         if (!auth()->check()) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'due_date' => 'nullable|date',
-            'priority' => 'nullable|in:high,normal,low,clear',
-            'status' => 'nullable|in:todo,inprogress,completed',
-        ]);
+        $request->validated();
 
         try {
             $task = $this->taskService->createTask($request->all(), $list_id,auth()->id());
@@ -56,15 +51,9 @@ class TaskController extends Controller
         }
     }
 
-    public function updateTask(Request $request, $task_id)
+    public function updateTask(CreateTaskRequest $request, $task_id)
     {
-        $request->validate([
-            'title' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
-            'due_date' => 'nullable|date',
-            'priority' => 'nullable|in:high,normal,low,clear',
-            'status' => 'nullable|in:todo,inprogress,completed',
-        ]);
+        $request->validated();
 
         try {
             $task = $this->taskService->updateTask($task_id, $request->all());

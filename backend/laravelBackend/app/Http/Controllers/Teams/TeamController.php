@@ -2,11 +2,18 @@
 
 namespace App\Http\Controllers\Teams;
 
+use App\Services\VerifyValidationService\ValidationService;
 use App\Http\Controllers\Controller;
+use App\Models\TeamMember;
+use App\Models\WorkspaceMember;
 use App\Services\WorkspaceService\TeamService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use \Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Support\Str;
+
 
 class TeamController extends Controller
 {
@@ -24,25 +31,76 @@ class TeamController extends Controller
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'visibility' => 'in:public,private',
-            'color_code' => 'nullable|string|max:10',
-        ]);
+
+        $validation = ValidationService::teamRules();
+        $validator = Validator::make($request->all(), $validation['rules'], $validation['messages']);
+
 
         if ($validator->fails()) {
-            return response()->json(['error' => 'Validation error', 'messages' => $validator->errors()], 422);
+            return response()->json([
+                'error' => 'Validation error',
+                'messages' => $validator->errors()
+            ], 422);
         }
 
+        DB::beginTransaction();
         try {
+            // Create the team
             $team = $this->teamService->createTeam($request->all(), $workspace_id, auth()->id());
-            return response()->json(['message' => 'Team created successfully', 'team' => $team], 201);
+
+
+            // Check if creator is already a member before adding
+            if (
+                !TeamMember::where('team_id', $team->team_id)
+                    ->where('user_id', auth()->id())
+                    ->exists()
+            ) {
+                TeamMember::create([
+                    'team_member_id' => Str::uuid(),
+                    'team_id' => $team->team_id,
+                    'user_id' => auth()->id(),
+                    'role' => 'owner',
+                    'joined_at' => now(),
+                ]);
+            }
+
+            // If team is public, add all workspace members
+            if ($team->visibility === 'public') {
+                $workspaceMembers = WorkspaceMember::where('workspace_id', $workspace_id)
+                    ->where('user_id', '!=', auth()->id()) // Exclude creator
+                    ->get();
+
+                foreach ($workspaceMembers as $member) {
+                    // Check if user is already a member before adding
+                    if (
+                        !TeamMember::where('team_id', $team->team_id)
+                            ->where('user_id', $member->user_id)
+                            ->exists()
+                    ) {
+                        TeamMember::create([
+                            'team_member_id' => Str::uuid(),
+                            'team_id' => $team->team_id,
+                            'user_id' => $member->user_id,
+                            'role' => 'member',
+                            'joined_at' => now(),
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Team created successfully',
+                'team' => $team,
+                'members_added' => $team->visibility === 'public' ? 'All workspace members added' : 'Only creator added'
+            ], 201);
         } catch (\Throwable $e) {
+            DB::rollBack();
             return response()->json(['error' => 'Failed to create team', 'details' => $e->getMessage()], 500);
+
         }
     }
-
     // Get all teams in a workspace
     public function getTeams($workspace_id)
     {
@@ -70,24 +128,32 @@ class TeamController extends Controller
     // Update team
     public function updateTeam(Request $request, $team_id)
     {
-        if (!auth()->check()) {
+        if (!Auth::check()) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
 
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
-            'visibility' => 'in:public,private',
-            'color_code' => 'nullable|string|max:10',
-        ]);
+        $validation = ValidationService::teamRules();
+
+        $validator = Validator::make($request->all(), $validation['rules'], $validation['messages']);
 
         if ($validator->fails()) {
-            return response()->json(['error' => 'Validation error', 'messages' => $validator->errors()], 422);
+            return response()->json([
+                'error' => 'Validation error',
+                'messages' => $validator->errors()
+            ], 422);
         }
 
         try {
-            $team = $this->teamService->updateTeam($team_id, $request->only(['name', 'description', 'visibility', 'color_code']), auth()->id());
-            return response()->json(['message' => 'Team updated successfully', 'team' => $team]);
+            $team = $this->teamService->updateTeam(
+                $team_id,
+                $request->only(['name', 'description', 'visibility', 'color_code']),
+                Auth::id()
+            );
+
+            return response()->json([
+                'message' => 'Team updated successfully',
+                'team' => $team
+            ]);
         } catch (ModelNotFoundException $e) {
             return response()->json(['error' => 'Team not found'], 404);
         } catch (\Throwable $e) {

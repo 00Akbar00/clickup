@@ -14,10 +14,17 @@ class CreateListRequest extends FormRequest
 
     public function rules(): array
     {
-        return [
-            'name' => ValidationService::nameRules(),
-            'description' => ValidationService::descriptionRules(),
-        ];
+        $nameRules = ValidationService::nameRules();
+        $descriptionRules = ValidationService::descriptionRules();
+        $listRules = ValidationService::listRules(); 
+
+        return array_merge(
+            [
+                'name' => $nameRules['rules'],
+                'description' => $descriptionRules['rules'],
+            ],
+            $listRules,
+        );
     }
 
     public function messages(): array

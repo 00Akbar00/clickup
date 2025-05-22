@@ -42,6 +42,24 @@ export const useWorkspaceStore = defineStore('workspace', {
         // Fetch workspaces from API
         await this.fetchWorkspaces()
         
+        // Process pending invitation if available
+        if (pendingInvitation) {
+          try {
+            const { token } = JSON.parse(pendingInvitation)
+            // Process invitation if user is authenticated
+            if (localStorage.getItem('authToken') || localStorage.getItem('authUser')) {
+              console.log('Processing pending invitation during initialization')
+              await this.acceptWorkspaceInvitation(token)
+              localStorage.removeItem('pendingInvitation')
+              
+              // Refresh workspaces after accepting invitation
+              await this.fetchWorkspaces()
+            }
+          } catch (inviteError) {
+            console.error('Error processing pending invitation:', inviteError)
+          }
+        }
+        
         // Set first workspace as current if none selected and workspaces exist
         if (!this.currentWorkspace && this.workspaces.length > 0) {
           await this.setCurrentWorkspace(this.workspaces[0])

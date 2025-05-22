@@ -19,12 +19,12 @@ class AvatarService
 
 
         if ($request->hasFile('profile_picture_url')) {
-            // $validateAvatarFile($request->file('profile_picture_url'));
+
             $avatarRules = ValidationService::avatarRules();
 
             // Validate the file
             $validator = Validator::make(
-                ['profile_picture_url' => $request->file('profile_picture_url')],
+                $request->all(), 
                 $avatarRules['rules'],
                 $avatarRules['messages']
             );

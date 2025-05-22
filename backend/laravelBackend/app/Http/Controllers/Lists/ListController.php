@@ -71,24 +71,13 @@ class ListController extends Controller
     /**
      * Update a list's details.
      */
-    public function updateList(Request $request, string $list_id): JsonResponse
+    public function updateList(CreateListRequest $request, string $list_id): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'name' => ['sometimes', 'required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'status' => ['sometimes', 'required', 'in:active,archived'],
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'Validation errors.',
-                'errors' => $validator->errors()
-            ], 422);
-        }
+        $listData = $request->validated();
 
         try {
-            $data = $request->only(['name', 'description', 'status']);
-            $list = $this->listService->updateList($list_id, $data);
+            
+            $list = $this->listService->updateList($list_id, $listData);
 
             return response()->json([
                 'message' => 'List updated successfully.',

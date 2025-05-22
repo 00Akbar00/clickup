@@ -32,20 +32,19 @@ class SignupController extends Controller
         $nameRules = ValidationService::nameRules();
         $emailValidation = ValidationService::emailSignupRules();
         $passwordValidation = ValidationService::passwordRules(true);
-
+        
         // Combine all rules (removed avatar rules since they're now in AvatarService)
         $rules = [
-            'full_name' => $nameRules,
+            'full_name' => $nameRules['rules'],
             'email' => $emailValidation['rules'],
             'password' => $passwordValidation['rules'],
         ];
-
         // Combine all messages
         $messages = array_merge(
+            $nameRules['messages'],
             $emailValidation['messages'],
             $passwordValidation['messages']
         );
-
         // Validate the request (excluding avatar validation)
         $request->validate($rules, $messages);
 

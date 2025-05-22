@@ -105,16 +105,21 @@
               <!-- Member Role & Actions -->
               <div class="d-flex align-items-center">
                 <span class="badge bg-light text-dark me-3 py-2 px-3">{{ formatRole(member.role) }}</span>
-                <div class="dropdown" v-if="(member.id || member.user_id) !== currentUserId">
+                <div v-if="(member.id || member.user_id) !== currentUserId && !member.isRemoving && !member.isUpdating" class="dropdown">
                   <button class="btn btn-link p-0 text-dark" type="button" @click.stop.prevent="toggleMemberOptions(member, $event)">
                     <i class="bi bi-three-dots-vertical"></i>
                   </button>
                   <ul class="dropdown-menu dropdown-menu-end member-options-menu" :class="{ 'show': activeMemberId === member.id || activeMemberId === member.user_id || activeMemberId === member.workspace_member_id }">
-                    <li v-if="member.role !== 'owner'"><a class="dropdown-item" href="#" @click.prevent="changeRole(member, 'admin')">Make Admin</a></li>
+                    <li v-if="member.role !== 'owner'"><a class="dropdown-item" href="#" @click.prevent="changeRole(member, 'owner')">Make Owner</a></li>
                     <li v-if="member.role !== 'member'"><a class="dropdown-item" href="#" @click.prevent="changeRole(member, 'member')">Make Member</a></li>
                     <li><hr class="dropdown-divider"></li>
                     <li><a class="dropdown-item text-danger" href="#" @click.prevent="removeMember(member)">Remove</a></li>
                   </ul>
+                </div>
+                <div v-else-if="member.isRemoving || member.isUpdating" class="me-3">
+                  <div class="spinner-border spinner-border-sm text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
                 </div>
                 <span v-else class="text-muted small fst-italic ms-2">(You)</span>
               </div>
@@ -130,6 +135,8 @@
 import { ref, computed, watch, onMounted, inject, onUnmounted } from 'vue'
 import { useWorkspaceStore } from '../stores/workspaceStore'
 import axios from 'axios'
+import { createToast } from 'mosha-vue-toastify'
+import 'mosha-vue-toastify/dist/style.css'
 
 const props = defineProps({
   isOpen: {
@@ -335,37 +342,194 @@ const toggleMemberOptions = (member, event) => {
 
 const changeRole = async (member, newRole) => {
   if (!confirm(`Are you sure you want to change ${member.name || member.full_name || member.email}'s role to ${formatRole(newRole)}?`)) {
-    return
+    return;
   }
   
-  activeMemberId.value = null
+  activeMemberId.value = null;
   
-  // Mock implementation - in a real app, you would call the API
-  const index = members.value.findIndex(m => 
-    (m.id && m.id === member.id) || 
-    (m.user_id && m.user_id === member.user_id) || 
-    (m.workspace_member_id && m.workspace_member_id === member.workspace_member_id)
-  )
-  
-  if (index !== -1) {
-    members.value[index] = { ...members.value[index], role: newRole }
+  try {
+    // Set loading state
+    const memberIndex = members.value.findIndex(m => 
+      (m.workspace_member_id && m.workspace_member_id === member.workspace_member_id)
+    );
+    
+    if (memberIndex !== -1) {
+      // Create a new object to ensure reactivity
+      members.value[memberIndex] = { ...members.value[memberIndex], isUpdating: true };
+    }
+    
+    // Get the workspace ID
+    const workspaceId = currentWorkspace.value.id || 
+                       currentWorkspace.value._id || 
+                       currentWorkspace.value.workspace_id;
+    
+    // Get the workspace_member_id
+    const workspaceMemberId = member.workspace_member_id;
+    
+    if (!workspaceId || !workspaceMemberId) {
+      throw new Error('Invalid workspace or workspace member ID');
+    }
+    
+    // Get auth token from localStorage
+    const userData = localStorage.getItem('authUser');
+    let token = null;
+    if (userData) {
+      const auth = JSON.parse(userData);
+      token = auth.token || localStorage.getItem('authToken');
+    }
+    
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+    
+    // Ensure token has Bearer prefix
+    const bearerToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+    
+    // Build request headers with Bearer token
+    const headers = {
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+      'Authorization': bearerToken
+    };
+    
+    console.log(`Updating role for member with workspace_member_id ${workspaceMemberId} in workspace ${workspaceId}`);
+    
+    // Make API call to update member role
+    const url = `http://localhost/api/workspaces/${workspaceId}/members/${workspaceMemberId}/role`;
+    const response = await axios.put(url, { role: newRole }, { headers });
+    
+    console.log('Update role response:', response.data);
+    
+    // Update the member in the local list
+    if (memberIndex !== -1) {
+      members.value[memberIndex] = { 
+        ...members.value[memberIndex], 
+        role: newRole,
+        isUpdating: false 
+      };
+    }
+    
+    // Show success message
+    createToast(`${member.name || member.full_name || member.email}'s role has been updated to ${formatRole(newRole)}.`, {
+      position: 'top-right',
+      type: 'success',
+      timeout: 3000
+    });
+    
+  } catch (error) {
+    console.error('Error updating member role:', error);
+    
+    // Reset the loading state if there was an error
+    const memberIndex = members.value.findIndex(m => 
+      m.workspace_member_id === member.workspace_member_id
+    );
+    
+    if (memberIndex !== -1) {
+      // Create a new object to ensure reactivity
+      members.value[memberIndex] = { ...members.value[memberIndex], isUpdating: false };
+    }
+    
+    createToast(`Failed to update role: ${error.response?.data?.message || error.message || 'Unknown error'}`, {
+      position: 'top-right',
+      type: 'danger',
+      timeout: 5000
+    });
   }
 }
 
 const removeMember = async (member) => {
   if (!confirm(`Are you sure you want to remove ${member.name || member.full_name || member.email} from this workspace?`)) {
-    return
+    return;
   }
   
-  activeMemberId.value = null
+  activeMemberId.value = null;
 
-  // Mock implementation - in a real app, you would call the API
-  members.value = members.value.filter(m => 
-    (m.id && m.id !== member.id) || 
-    (m.user_id && m.user_id !== member.user_id) || 
-    (m.workspace_member_id && m.workspace_member_id !== member.workspace_member_id)
-  )
-}
+  try {
+    // Set loading state for this specific member
+    const memberIndex = members.value.findIndex(m => 
+      (m.id && m.id === member.id) || 
+      (m.user_id && m.user_id === member.user_id)
+    );
+    
+    if (memberIndex !== -1) {
+      // Create a new object to ensure reactivity
+      members.value[memberIndex] = { ...members.value[memberIndex], isRemoving: true };
+    }
+    
+    // Get the workspace ID
+    const workspaceId = currentWorkspace.value.id || 
+                       currentWorkspace.value._id || 
+                       currentWorkspace.value.workspace_id;
+    
+    // Get the workspace_member_id - this is the critical change
+    const workspaceMemberId = member.workspace_member_id;
+    
+    if (!workspaceId || !workspaceMemberId) {
+      throw new Error('Invalid workspace or workspace member ID');
+    }
+    
+    // Get auth token from localStorage
+    const userData = localStorage.getItem('authUser');
+    let token = null;
+    if (userData) {
+      const auth = JSON.parse(userData);
+      token = auth.token || localStorage.getItem('authToken');
+    }
+    
+    if (!token) {
+      throw new Error('Authentication token not found');
+    }
+    
+    // Ensure token has Bearer prefix
+    const bearerToken = token.startsWith('Bearer ') ? token : `Bearer ${token}`;
+    
+    // Build request headers with Bearer token
+    const headers = {
+      'Accept': 'application/json',
+      'Authorization': bearerToken
+    };
+    
+    console.log(`Removing member with workspace_member_id ${workspaceMemberId} from workspace ${workspaceId}`);
+    
+    // Use the correct ID (workspace_member_id) for the API endpoint
+    const url = `http://localhost/api/workspaces/${workspaceId}/members/${workspaceMemberId}`;
+    const response = await axios.delete(url, { headers });
+    
+    console.log('Remove member response:', response.data);
+    
+    // Remove the member from the local list
+    members.value = members.value.filter(m => 
+      m.workspace_member_id !== workspaceMemberId
+    );
+    
+    // Show success message
+    createToast(`${member.name || member.full_name || member.email} has been removed from the workspace.`, {
+      position: 'top-right',
+      type: 'success',
+      timeout: 3000
+    });
+    
+  } catch (error) {
+    console.error('Error removing workspace member:', error);
+    
+    // Reset the loading state if there was an error
+    const memberIndex = members.value.findIndex(m => 
+      (m.id && m.id === member.id) || 
+      (m.user_id && m.user_id === member.user_id)
+    );
+    
+    if (memberIndex !== -1) {
+      // Create a new object to ensure reactivity
+      members.value[memberIndex] = { ...members.value[memberIndex], isRemoving: false };
+    }
+    
+    createToast(`Failed to remove member: ${error.response?.data?.message || error.message || 'Unknown error'}`, {
+      position: 'top-right',
+      type: 'danger',
+      timeout: 5000
+    });
+  }
+};
 
 const getUserInitials = (name) => {
   if (!name) return '?'

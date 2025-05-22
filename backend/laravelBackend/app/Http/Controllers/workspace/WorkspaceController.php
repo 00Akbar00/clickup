@@ -26,89 +26,90 @@ use App\Models\TaskList;
 use App\Models\User;
 use Exception;
 
+
 class WorkspaceController extends Controller
 {
     // Create new workspace
     public function createWorkspace(CreateWorkspaceRequest $request)
-{
-    try {
-        DB::beginTransaction();
+    {
+        try {
+            DB::beginTransaction();
 
-        $name = $request->input('name', 'Workspace');
-        $workspaceId = Str::uuid();
-        $avatarDirectory = 'workspace-logos';
+            $name = $request->input('name', 'Workspace');
+            $workspaceId = Str::uuid();
+            $avatarDirectory = 'workspace-logos';
 
-        Storage::makeDirectory("public/{$avatarDirectory}");
+            Storage::makeDirectory("public/{$avatarDirectory}");
 
-        // Handle logo upload or avatar generation
-        if ($request->hasFile('logo')) {
-            $uploadedLogo = $request->file('logo');
-            $avatarFileName = Str::uuid() . '.' . $uploadedLogo->getClientOriginalExtension();
-            $avatarPath = "{$avatarDirectory}/{$avatarFileName}";
+            // Handle logo upload or avatar generation
+            if ($request->hasFile('logo')) {
+                $uploadedLogo = $request->file('logo');
+                $avatarFileName = Str::uuid() . '.' . $uploadedLogo->getClientOriginalExtension();
+                $avatarPath = "{$avatarDirectory}/{$avatarFileName}";
 
-            Storage::disk('public')->putFileAs($avatarDirectory, $uploadedLogo, $avatarFileName);
-        } else {
-            $initial = strtoupper(mb_substr(trim($name), 0, 1));
-            $avatar = Avatar::create($initial)->getImageObject()->encode(new PngEncoder());
+                Storage::disk('public')->putFileAs($avatarDirectory, $uploadedLogo, $avatarFileName);
+            } else {
+                $initial = strtoupper(mb_substr(trim($name), 0, 1));
+                $avatar = Avatar::create($initial)->getImageObject()->encode(new PngEncoder());
 
-            $avatarFileName = Str::uuid() . '.png';
-            $avatarPath = "{$avatarDirectory}/{$avatarFileName}";
+                $avatarFileName = Str::uuid() . '.png';
+                $avatarPath = "{$avatarDirectory}/{$avatarFileName}";
 
-            Storage::disk('public')->put($avatarPath, $avatar);
+                Storage::disk('public')->put($avatarPath, $avatar);
+            }
+
+            $logoUrl = asset("storage/{$avatarPath}");
+
+            // Create workspace record
+            DB::table('workspaces')->insert([
+                'workspace_id' => $workspaceId,
+                'name' => $name,
+                'description' => $request->input('description'),
+                'created_by' => Auth::id(),
+                'invite_token' => Str::uuid(),
+                'invite_token_expires_at' => Carbon::now()->addDays(7),
+                'logo_url' => $logoUrl,
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+
+            // Add user as owner to workspace_members
+            DB::table('workspace_members')->insert([
+                'workspace_member_id' => Str::uuid(),
+                'workspace_id' => $workspaceId,
+                'user_id' => Auth::id(),
+                'role' => 'owner',
+                'joined_at' => now()
+            ]);
+
+            // Update user status
+            User::where('user_id', Auth::id())->update([
+                'is_part_of_workspace' => true
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Workspace created successfully',
+                'workspace' => DB::table('workspaces')->where('workspace_id', $workspaceId)->first()
+            ], 201);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('Workspace creation error', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Workspace creation failed',
+                'error' => config('app.debug') ? $e->getMessage() : null
+            ], 500);
         }
-
-        $logoUrl = asset("storage/{$avatarPath}");
-
-        // Create workspace record
-        DB::table('workspaces')->insert([
-            'workspace_id' => $workspaceId,
-            'name' => $name,
-            'description' => $request->input('description'),
-            'created_by' => Auth::id(),
-            'invite_token' => Str::uuid(),
-            'invite_token_expires_at' => Carbon::now()->addDays(7),
-            'logo_url' => $logoUrl,
-            'created_at' => now(),
-            'updated_at' => now()
-        ]);
-
-        // Add user as owner to workspace_members
-        DB::table('workspace_members')->insert([
-            'workspace_member_id' => Str::uuid(),
-            'workspace_id' => $workspaceId,
-            'user_id' => Auth::id(),
-            'role' => 'owner',
-            'joined_at' => now()
-        ]);
-
-        // Update user status
-        User::where('user_id', Auth::id())->update([
-            'is_part_of_workspace' => true
-        ]);
-
-        DB::commit();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Workspace created successfully',
-            'workspace' => DB::table('workspaces')->where('workspace_id', $workspaceId)->first()
-        ], 201);
-
-    } catch (\Throwable $e) {
-        DB::rollBack();
-
-        Log::error('Workspace creation error', [
-            'error' => $e->getMessage(),
-            'trace' => $e->getTraceAsString()
-        ]);
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Workspace creation failed',
-            'error' => config('app.debug') ? $e->getMessage() : null
-        ], 500);
     }
-}
 
     // List user's workspaces
     public function getWorkspaces()
@@ -137,7 +138,7 @@ class WorkspaceController extends Controller
         }
     }
 
-    public function getWorkspaceById(Request $request, int $workspaceId)
+    public function getWorkspaceById(Request $request, $workspaceId)
     {
         try {
             $userId = Auth::user()->user_id;
@@ -180,24 +181,24 @@ class WorkspaceController extends Controller
     {
         try {
             // Validation
-            $validator = Validator::make($request->all(), [
-                'name' => [
-                    'required',
-                    'string',
-                    'max:255',
-                    'regex:/^[a-zA-Z0-9\s]+$/',
-                ],
-                'description' => 'nullable|string|max:100',
-                'logo' => 'nullable|file|mimes:jpg,jpeg,png|max:2048',
-            ]);
+            // $validator = Validator::make($request->all(), [
+            //     'name' => [
+            //         'required',
+            //         'string',
+            //         'max:255',
+            //         'regex:/^[a-zA-Z0-9\s]+$/',
+            //     ],
+            //     'description' => 'nullable|string|max:100',
+            //     'logo_url' => 'nullable|file|mimes:jpg,jpeg,png|max:1024',
+            // ]);
 
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Validation failed.',
-                    'errors' => $validator->errors()->toArray(),
-                ], 422);
-            }
+            // if ($validator->fails()) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => 'Validation failed.',
+            //         'errors' => $validator->errors()->toArray(),
+            //     ], 422);
+            // }
 
             // Workspace existence check
             $workspace = Workspace::find($workspace_id);
@@ -212,7 +213,7 @@ class WorkspaceController extends Controller
             $userId = Auth::user()->user_id;
             $isAuthorized = WorkspaceMember::where('workspace_id', $workspace_id)
                 ->where('user_id', $userId)
-                ->whereIn('role', ['owner', 'admin'])
+                ->whereIn('role', ['owner', 'member'])
                 ->exists();
 
             if (!$isAuthorized) {
@@ -226,8 +227,8 @@ class WorkspaceController extends Controller
             $data = $request->only(['name', 'description']);
 
             // Handle logo
-            if ($request->hasFile('logo')) {
-                $logoFile = $request->file('logo');
+            if ($request->hasFile('logo_url')) {
+                $logoFile = $request->file('logo_url');
                 $fileName = uniqid('workspace_logo_') . '.' . $logoFile->getClientOriginalExtension();
                 $filePath = 'workspace_logos/' . $fileName;
 
@@ -262,6 +263,8 @@ class WorkspaceController extends Controller
             ], 500);
         }
     }
+
+
 
     public function deleteWorkspace($workspace_id)
     {

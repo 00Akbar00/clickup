@@ -32,6 +32,12 @@ const router = createRouter({
       component: Auth
     },
     {
+      path: '/join',
+      name: 'join-workspace',
+      component: Auth,
+      props: route => ({ inviteToken: route.query.token })
+    },
+    {
       path: '/create-workspace',
       name: 'create-workspace',
       component: CreateWorkspacePage

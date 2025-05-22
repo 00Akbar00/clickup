@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Workspace;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\SendWorkspaceInvitation;
+use App\Models\Team;
+use App\Models\TeamMember;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -17,6 +18,7 @@ use App\Models\WorkspaceMember;
 use App\Models\User;
 use App\Models\WorkspaceInvitation;
 use App\Mail\WorkspaceInvitationMail;
+use App\Services\VerifyValidationService\ValidationService;
 
 class WorkspaceInviteController extends Controller
 {
@@ -62,11 +64,9 @@ class WorkspaceInviteController extends Controller
     {
         Log::info("Sending workspace invitations...");
 
-        $validator = Validator::make($request->all(), [
-            'emails' => 'required|array|min:1',
-            'emails.*' => 'required|email',
-            'role' => 'required|in:member,admin',
-        ]);
+        $validation = ValidationService::workspaceInvitationRules();
+
+        $validator = Validator::make($request->all(), $validation['rules'], $validation['messages']);
 
         if ($validator->fails()) {
             return response()->json([
@@ -89,10 +89,9 @@ class WorkspaceInviteController extends Controller
                     'message' => 'Invite token missing or expired. Please generate invite link first.',
                 ], 400);
             }
- 
+
             $inviterName = Auth::user()->full_name;
             $inviteLink = $this->buildInviteLink($workspace->invite_token);
-
             $results = [];
 
             foreach ($emails as $email) {
@@ -175,7 +174,7 @@ class WorkspaceInviteController extends Controller
     /**
      * Accept invitation (Auth required)
      */
-    public function joinWorkspace(Request $request,$token)
+    public function joinWorkspace(Request $request, $token)
     {
         DB::beginTransaction();
 
@@ -351,13 +350,47 @@ class WorkspaceInviteController extends Controller
 
     private function addWorkspaceMember($workspaceId, $userId, $role)
     {
-        WorkspaceMember::create([
-            'workspace_member_id' => (string) Str::uuid(),
-            'workspace_id' => $workspaceId,
-            'user_id' => $userId,
-            'role' => $role,
-            'joined_at' => now()
-        ]);
+        DB::transaction(function () use ($workspaceId, $userId, $role) {
+            // First check if user is already a workspace member
+            if (
+                WorkspaceMember::where('workspace_id', $workspaceId)
+                    ->where('user_id', $userId)
+                    ->exists()
+            ) {
+                return; // Already a member, exit early
+            }
+
+            // Add to workspace members
+            WorkspaceMember::create([
+                'workspace_member_id' => (string) Str::uuid(),
+                'workspace_id' => $workspaceId,
+                'user_id' => $userId,
+                'role' => $role,
+                'joined_at' => now()
+            ]);
+
+            // Get all public teams in this workspace
+            $publicTeams = Team::where('workspace_id', $workspaceId)
+                ->where('visibility', 'public')
+                ->get()
+                ->unique('team_id'); // Ensure no duplicates
+
+            // Add user to all public teams if not already a member
+            foreach ($publicTeams as $team) {
+                if (
+                    !TeamMember::where('team_id', $team->team_id)
+                        ->where('user_id', $userId)
+                        ->exists()
+                ) {
+                    TeamMember::create([
+                        'team_member_id' => (string) Str::uuid(),
+                        'team_id' => $team->team_id,
+                        'user_id' => $userId,
+                        'role' => 'member',
+                    ]);
+                }
+            }
+        });
     }
 
     private function handleError(\Exception $e, $message = 'An error occurred', $code = 500)

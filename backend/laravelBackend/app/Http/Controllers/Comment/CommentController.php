@@ -36,16 +36,6 @@ class CommentController extends Controller
             ], 401);
         }
 
-        // 2. Task ID Validation
-        // if (!is_numeric($taskId) || (int)$taskId <= 0) {
-        //     return response()->json([
-        //         'message' => 'Invalid Task ID: The provided task ID is not valid.',
-        //         'errors' => [
-        //             'task_id' => ['Task ID must be a positive integer.']
-        //         ]
-        //     ], 400);
-        // }
-        // $taskId = (int)$taskId;
 
         try {
             // 3. Input Data Validation
@@ -59,31 +49,22 @@ class CommentController extends Controller
                     }),
                     // CUSTOM VALIDATION: Disallow mix of alphanumeric and special characters
                     function ($attribute, $value, $fail) {
-                        if (is_null($value) || $value === '') { // If nullable and not present, skip this check
+                        if (strip_tags($value) !== $value) {
+                            $fail('The ' . $attribute . ' field contains invalid HTML tags.');
                             return;
-                        }
-                        // Check for presence of alphanumeric characters (letters or numbers)
-                        $hasAlphaNum = preg_match('/[a-zA-Z0-9]/', $value);
-                        // Check for presence of special characters (anything not a letter, number, or whitespace)
-                        // You can customize the definition of "special characters" by adjusting the regex.
-                        // This example considers anything not alphanumeric and not whitespace as special.
-                        $hasSpecial  = preg_match('/[^a-zA-Z0-9\s]/', $value);
-
-                        if ($hasAlphaNum && $hasSpecial) {
-                            $fail('The ' . $attribute . ' field cannot contain both alphanumeric characters and special characters at the same time. Please use either alphanumeric characters (and spaces) or special characters, but not a mix of both types.');
                         }
                     },
                 ],
                 'files' => [
                     'nullable',
                     'array',
-                    'max:5', // Max 5 files
+                    // 'max:5', // Max 5 files
                 ],
                 'files.*' => [
                     'required',
                     'file',
                     'mimes:jpg,jpeg,png,pdf,doc,docx,txt,xls,xlsx,mp4,mov,avi,mkv,webm,mp3,wav,aac,ogg',
-                    'max:10240', // Max 10MB per file
+                    'max:10240'// Max 2MB per file
                 ],
             ], [
                 // Custom messages for standard validation rules
@@ -119,31 +100,31 @@ class CommentController extends Controller
             }
 
             $commentData = [
-                'task_id'   => $taskId,
-                'sender_id' =>auth()->id(),
-                'comment'   => $validatedData['comment'] ?? null,
-                'files'     => $filesInfo,
+                'task_id' => $taskId,
+                'sender_id' => auth()->id(),
+                'comment' => $validatedData['comment'] ?? null,
+                'files' => $filesInfo,
                 'timestamp' => now()->toISOString(),
-                'name'      => $user->full_name,
+                'name' => $user->full_name,
             ];
 
             Event::dispatch(new CommentCreated($commentData));
 
             return response()->json([
                 'message' => 'Comment created successfully and event dispatched.',
-                'data'    => $commentData
+                'data' => $commentData
             ], 201);
 
         } catch (ValidationException $e) {
             return response()->json([
                 'message' => 'Validation Failed: Please check your input.',
-                'errors'  => $e->errors()
+                'errors' => $e->errors()
             ], 422);
         } catch (\Throwable $e) {
             // Log::error('Failed to process comment: ' . $e->getMessage(), ['exception' => $e]);
             return response()->json([
                 'message' => 'Failed to process comment: An unexpected error occurred.',
-                'error'   => $e->getMessage()
+                'error' => $e->getMessage()
             ], 500);
         }
     }

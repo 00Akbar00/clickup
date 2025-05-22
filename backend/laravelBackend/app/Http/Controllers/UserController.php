@@ -2,109 +2,78 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Http\Requests\UpdateUserProfilePictureRequest;
+use App\Http\Requests\UpdateUserProfileRequest;
+use App\Services\UserService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Log; // <<< CORRECTED: Ensure this line is exactly like this
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Database\QueryException;
 
 class UserController extends Controller
 {
+    protected UserService $userService;
+
+    /**
+     * UserController constructor.
+     *
+     * @param UserService $userService
+     */
+    public function __construct(UserService $userService)
+    {
+        $this->userService = $userService;
+        // Apply auth middleware to all methods in this controller
+        // Or apply to specific methods using ->only() or ->except()
+        // $this->middleware('auth:api'); // Assuming you are using API authentication
+    }
+
     /**
      * Get the authenticated user's profile.
      */
-    public function getProfile()
+    public function getProfile(): JsonResponse
     {
         $user = Auth::user();
 
+        // This check might be redundant if auth middleware is properly configured
+        // and FormRequest authorize() methods are used.
+        // However, it's a good explicit check if middleware isn't guaranteed for all routes.
         if (!$user) {
             return response()->json(['message' => 'Unauthenticated.'], 401);
         }
 
-        return response()->json([
-            'user' => [
-                'fullName' => $user->full_name, // Assuming your User model has 'full_name'
-                'email' => $user->email,
-                'profile_picture_url' => $user->profile_picture_url ? asset('storage/' . $user->profile_picture_url) : null,
-            ]
-        ]);
+        $profileData = $this->userService->getProfileData($user);
+
+        return response()->json(['user' => $profileData]);
     }
 
-    public function updateProfile(Request $request)
+    /**
+     * Update the authenticated user's profile.
+     *
+     * @param UpdateUserProfileRequest $request
+     * @return JsonResponse
+     */
+    public function updateProfile(UpdateUserProfileRequest $request): JsonResponse
     {
+        $user = Auth::user(); // User is guaranteed to be authenticated by UpdateUserProfileRequest's authorize method
+
         try {
-            $user = Auth::user();
-
-            if (!$user) {
-                return response()->json(['message' => 'Unauthenticated.'], 401);
-            }
-
-            $messages = [
-                'fullName.required' => 'The full name cannot be empty if you intend to change it.',
-                'fullName.string'   => 'The full name must be a text value. Please provide a valid name.',
-                'fullName.min'      => 'The full name must be at least :min characters long.',
-                'fullName.max'      => 'The full name cannot be longer than :max characters.',
-                'fullName.regex'    => 'The full name contains invalid characters. Only letters, spaces, hyphens (-), and apostrophes (\') are allowed.',
-            ];
-
-
-            $validatedData = $request->validate([
-                'fullName' => [
-                    'sometimes', // Validate 'fullName' only if it is present in the request.
-                    'required',  // If 'fullName' is present, it must not be empty.
-                    'string',    // Must be a string.
-                    'min:2',     // Minimum 2 characters.
-                    'max:255',   // Maximum 255 characters.
-                    'regex:/^[\p{L}\s\'\-]+$/u', // Allows Unicode letters, spaces, apostrophes, hyphens.
-                ],
-            ], $messages); // Pass your custom messages to the validator.
-
-            $updated = false;
-
-            // Update fullName if it was provided, validated, and is different from the current name
-            if ($request->filled('fullName')) {
-                if ($user->full_name !== $validatedData['fullName']) {
-                     $user->full_name = $validatedData['fullName'];
-                     $updated = true;
-                }
-            }
-
+            // $request->validated() will only return data that passed validation rules
+            // and was defined in the rules() method of UpdateUserProfileRequest.
+            $updated = $this->userService->updateProfile($user, $request->validated());
 
             if ($updated) {
-                $user->save(); // Perform the database operation
                 return response()->json(['message' => 'Profile updated successfully.']);
             }
 
-            // If no fields eligible for update were changed
             return response()->json(['message' => 'No changes were made to the profile.']);
 
-        } catch (ValidationException $e) {
-            Log::warning('Validation failed during profile update: ' . $e->getMessage(), [
-                'user_id' => $user ? $user->id : 'Unauthenticated attempt', // Avoid error if $user is null
-                'errors' => $e->errors()
-            ]);
-
-
-            throw $e;
-
         } catch (QueryException $e) {
-            // Handle database-specific errors (e.g., connection issues, constraint violations)
-            Log::error('Database query error during profile update.', [
-                'user_id' => $user ? $user->id : 'Unknown user',
-                'error_code' => $e->getCode(),
-                'message' => $e->getMessage(),
-                // 'trace' => $e->getTraceAsString() // Optional: for detailed debugging
-            ]);
+            // Logging is already done in the service, but you can add controller-specific context if needed.
+            // Log::error('Controller: Database query error during profile update.', ['user_id' => $user->id]);
             return response()->json(['message' => 'A server error occurred while updating your profile. Please try again later.'], 500);
-
         } catch (\Exception $e) {
-            // Handle any other unexpected errors
-            Log::error('Unexpected error during profile update.', [
-                'user_id' => $user ? $user->id : 'Unknown user',
-                'message' => $e->getMessage(),
-                // 'trace' => $e->getTraceAsString() // Optional: for detailed debugging
-            ]);
+            // Logging is already done in the service.
+            // Log::error('Controller: Unexpected error during profile update.', ['user_id' => $user->id]);
             return response()->json(['message' => 'An unexpected error occurred. Please try again.'], 500);
         }
     }
@@ -112,42 +81,29 @@ class UserController extends Controller
     /**
      * Update the authenticated user's profile picture.
      * Allowed types: jpeg, png, jpg, gif, webp. Max size: 5MB.
+     *
+     * @param UpdateUserProfilePictureRequest $request
+     * @return JsonResponse
      */
-    public function updateProfilePicture(Request $request)
+    public function updateProfilePicture(UpdateUserProfilePictureRequest $request): JsonResponse
     {
-        $user = Auth::user();
+        $user = Auth::user(); // User is guaranteed to be authenticated
 
-        if (!$user) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+        try {
+            $newProfilePictureUrl = $this->userService->updateProfilePicture(
+                $user,
+                $request->file('profile_picture')
+            );
+
+            return response()->json([
+                'message' => 'Profile picture updated successfully. 🖼️',
+                'profile_picture_url' => $newProfilePictureUrl,
+            ]);
+        } catch (QueryException $e) {
+            return response()->json(['message' => 'A server error occurred while updating your profile picture. Please try again later.'], 500);
+        } catch (\Exception $e) {
+            // This can catch file system errors or other issues from the service.
+            return response()->json(['message' => 'An unexpected error occurred while updating your profile picture.'], 500);
         }
-
-        $request->validate([
-            'profile_picture' => [
-                'required',
-                'image', // Checks if the file is an image (jpeg, png, bmp, gif, svg, or webp)
-                'mimes:jpeg,png,jpg,gif,webp', // Specify allowed image MIME types
-                'max:5120', // Max file size in kilobytes (5MB = 5 * 1024 KB)
-            ],
-        ]);
-
-        // Delete old profile picture if exists
-        if ($user->profile_picture_url && Storage::disk('public')->exists($user->profile_picture_url)) {
-            Storage::disk('public')->delete($user->profile_picture_url);
-        }
-
-
-        $userId = $user->user_id ?? $user->id; // Handle cases where 'user_id' might not be the PK name
-        $extension = $request->file('profile_picture')->getClientOriginalExtension();
-        $fileName = 'user_' . $userId . '_' . time() . '_' . uniqid() . '.' . $extension;
-
-        $path = $request->file('profile_picture')->storeAs('profile_pictures', $fileName, 'public');
-
-        $user->profile_picture_url = $path;
-        $user->save();
-
-        return response()->json([
-            'message' => 'Profile picture updated successfully. 🖼️',
-            'profile_picture_url' => asset('storage/' . $path),
-        ]);
     }
 }

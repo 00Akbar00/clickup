@@ -117,6 +117,12 @@
               Create New Workspace
             </a>
           </li>
+          <li v-if="currentWorkspace">
+            <a class="dropdown-item d-flex align-items-center text-danger" href="#" @click="leaveWorkspace">
+              <i class="bi bi-box-arrow-left me-2"></i>
+              Leave Workspace
+            </a>
+          </li>
         </ul>
       </div>
       <button

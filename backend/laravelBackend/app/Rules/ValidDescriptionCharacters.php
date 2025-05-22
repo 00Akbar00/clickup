@@ -18,3 +18,4 @@ class ValidDescriptionCharacters implements ValidationRule
     }
 
 }
+

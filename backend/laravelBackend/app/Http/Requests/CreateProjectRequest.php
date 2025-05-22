@@ -17,14 +17,19 @@ class CreateProjectRequest extends FormRequest
 
     public function rules(): array
     {
+        $nameRules = ValidationService::nameRules();
+        $descriptionRules = ValidationService::descriptionRules();
+        $projectRules = ValidationService::projectRules(); 
+    
         return array_merge(
             [
-                'name' => ValidationService::nameRules(),
-                'description' => ValidationService::descriptionRules(),
+                'name' => $nameRules['rules'],
+                'description' => $descriptionRules['rules'],
             ],
-            ValidationService::projectRules() 
+            $projectRules 
         );
     }
+    
     public function messages(): array
     {
         return [
