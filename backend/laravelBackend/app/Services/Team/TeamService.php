@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\WorkspaceService;
+namespace App\Services\Team;
 
 use App\Models\Team;
 use Illuminate\Support\Facades\DB;

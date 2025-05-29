@@ -6,7 +6,7 @@ use App\Services\VerifyValidationService\ValidationService;
 use App\Http\Controllers\Controller;
 use App\Models\TeamMember;
 use App\Models\WorkspaceMember;
-use App\Services\WorkspaceService\TeamService;
+use App\Services\Team\TeamService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;

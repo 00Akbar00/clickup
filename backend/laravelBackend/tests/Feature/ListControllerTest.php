@@ -5,7 +5,7 @@ namespace Tests\Feature\Lists;
 use App\Models\User;
 use App\Models\Project;
 use App\Models\TaskList;
-use App\Services\WorkspaceService\ListService; // Keep if used, but it's mocked here
+use App\Services\List\ListService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Tests\TestCase;

@@ -1,8 +1,8 @@
 <?php
 
-namespace App\Services;
+namespace App\Services\User;
 
-use App\Models\User; // Assuming your User model is in App\Models
+use App\Models\User;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;

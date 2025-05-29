@@ -1,8 +1,7 @@
-<?php 
-namespace App\Services\WorkspaceService;
+<?php
+namespace App\Services\Task;
 
 use App\Models\Task;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class TaskService
@@ -10,15 +9,15 @@ class TaskService
     public function createTask(array $data, string $list_id, string $user_id)
     {
         return Task::create([
-            'task_id'      => (string) Str::uuid(),
+            'task_id' => (string) Str::uuid(),
             'list_id' => $list_id,
-            'created_by'   => $user_id,
+            'created_by' => $user_id,
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
             'due_date' => $data['due_date'] ?? null,
             'priority' => $data['priority'] ?? 'clear',
             'status' => $data['status'] ?? 'todo',
-            
+
         ]);
     }
 

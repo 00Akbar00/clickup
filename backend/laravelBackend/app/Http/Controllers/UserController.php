@@ -4,9 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\UpdateUserProfilePictureRequest;
 use App\Http\Requests\UpdateUserProfileRequest;
-use App\Services\UserService;
+use App\Services\User\UserService;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Database\QueryException;
 

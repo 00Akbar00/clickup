@@ -1,30 +1,47 @@
 <?php
 
+/**
+ * WorkspaceController
+ *
+ * This controller manages all workspace-related operations, including:
+ * - Creating a new workspace with optional logo upload or avatar generation
+ * - Listing all workspaces associated with the authenticated user
+ * - Fetching details of a specific workspace
+ * - Updating workspace metadata and logo
+ * - Deleting a workspace and all related teams, projects, lists, tasks, and members
+ *
+ * It ensures proper authorization, handles storage, and maintains data consistency with database transactions.
+ *
+ * @author [Muhammad Akbar]
+ */
+
 namespace App\Http\Controllers\Workspace;
-use App\Http\Requests\CreateWorkspaceRequest;
+
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CreateWorkspaceRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
-use Carbon\Carbon;
-use Intervention\Image\Encoders\PngEncoder;
-use Laravolt\Avatar\Facade as Avatar;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-use App\Models\Workspace;
+use Illuminate\Support\Str;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use App\Models\WorkspaceMember;
+
+use App\Models\Project;
 use App\Models\Task;
 use App\Models\TaskAssignee;
-use App\Models\Project;
+use App\Models\TaskList;
 use App\Models\Team;
 use App\Models\TeamMember;
-use App\Models\TaskList;
 use App\Models\User;
+use App\Models\Workspace;
+use App\Models\WorkspaceMember;
+
+use Carbon\Carbon;
 use Exception;
+use Intervention\Image\Encoders\PngEncoder;
+use Laravolt\Avatar\Facade as Avatar;
+
 
 
 class WorkspaceController extends Controller
@@ -180,25 +197,6 @@ class WorkspaceController extends Controller
     public function updateWorkspace(Request $request, $workspace_id)
     {
         try {
-            // Validation
-            // $validator = Validator::make($request->all(), [
-            //     'name' => [
-            //         'required',
-            //         'string',
-            //         'max:255',
-            //         'regex:/^[a-zA-Z0-9\s]+$/',
-            //     ],
-            //     'description' => 'nullable|string|max:100',
-            //     'logo_url' => 'nullable|file|mimes:jpg,jpeg,png|max:1024',
-            // ]);
-
-            // if ($validator->fails()) {
-            //     return response()->json([
-            //         'success' => false,
-            //         'message' => 'Validation failed.',
-            //         'errors' => $validator->errors()->toArray(),
-            //     ], 422);
-            // }
 
             // Workspace existence check
             $workspace = Workspace::find($workspace_id);

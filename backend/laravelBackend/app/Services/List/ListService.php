@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Services\WorkspaceService;
+namespace App\Services\List;
 
 use App\Models\TaskList;
 use Illuminate\Support\Facades\Auth;

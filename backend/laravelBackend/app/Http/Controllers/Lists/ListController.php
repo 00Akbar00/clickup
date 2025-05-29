@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Lists;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateListRequest;
 use App\Services\VerifyValidationService\ValidationService;
-use App\Services\WorkspaceService\ListService;
+use App\Services\List\ListService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
@@ -76,7 +76,7 @@ class ListController extends Controller
         $listData = $request->validated();
 
         try {
-            
+
             $list = $this->listService->updateList($list_id, $listData);
 
             return response()->json([

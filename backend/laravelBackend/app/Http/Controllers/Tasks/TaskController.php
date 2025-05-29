@@ -3,7 +3,7 @@ namespace App\Http\Controllers\Tasks;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateTaskRequest;
-use App\Services\WorkspaceService\TaskService;
+use App\Services\Task\TaskService;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -24,7 +24,7 @@ class TaskController extends Controller
         $request->validated();
 
         try {
-            $task = $this->taskService->createTask($request->all(), $list_id,auth()->id());
+            $task = $this->taskService->createTask($request->all(), $list_id, auth()->id());
             return response()->json(['message' => 'Task created', 'task' => $task], 201);
         } catch (\Exception $e) {
             return response()->json(['error' => 'Failed to create task', 'details' => $e->getMessage()], 500);

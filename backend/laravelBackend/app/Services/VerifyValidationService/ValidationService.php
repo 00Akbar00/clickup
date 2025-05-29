@@ -64,7 +64,7 @@ class ValidationService
     {
         $nameRules = self::nameRules();
         $descriptionRules = self::descriptionRules();
-    
+
         return [
             'rules' => [
                 'title' => $nameRules['rules'],
@@ -75,7 +75,7 @@ class ValidationService
                     function ($attribute, $value, $fail) {
                         $date = \DateTime::createFromFormat('d-m-Y', $value);
                         $now = new \DateTime('today');
-    
+
                         if (!$date || $date->format('d-m-Y') !== $value) {
                             $fail('The due date must be in the format dd-mm-yyyy.');
                         } elseif ($date < $now) {
@@ -210,17 +210,10 @@ class ValidationService
                 'max:255',
                 new ValidDescriptionCharacters,
             ],
-            // 'logo_url' => [
-            //     'nullable',
-            //     'file',
-            //     'mimes:jpeg,jpg,png',
-            //     'max:1024'
-            // ], // 2MB max
+
         ];
 
     }
-
-    // File: app/Services/VerifyValidationService/ValidationService.php
 
     public static function updateWorkspaceMemberRoleRules(): array
     {

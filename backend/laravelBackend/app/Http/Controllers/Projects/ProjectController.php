@@ -4,12 +4,10 @@ namespace App\Http\Controllers\Projects;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CreateProjectRequest;
-use App\Services\VerifyValidationService\ValidationService;
-use App\Services\WorkspaceService\ProjectService;
+use App\Services\Project\ProjectService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 class ProjectController extends Controller
@@ -29,7 +27,7 @@ class ProjectController extends Controller
 
         try {
             $validator = $request->validated();
-    
+
             $project = $this->projectService->createProject($validator, $team_id);
             return response()->json(['message' => 'Project created successfully', 'project' => $project], 201);
 
